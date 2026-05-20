@@ -18,6 +18,7 @@ import {
   collectShared,
   collectConditionals,
 } from './collectors/index.js';
+import { collectComponentTree } from './collectors/collect-component-tree-depth.js';
 import { calculateScore } from './scoring/calculate-score.js';
 import { getRiskLevel } from './scoring/risk-level.js';
 import { generateIssues } from './rules/generate-issues.js';
@@ -68,9 +69,11 @@ export async function analyzeProject(
   // 4. Analyze each page
   const pageDetails: PageDetail[] = [];
 
+  const absoluteTargetDir = path.resolve(targetDir);
+
   for (const entry of pageEntries) {
     try {
-      const detail = analyzePage(entry, resolvedConfig);
+      const detail = analyzePage(entry, resolvedConfig, project, absoluteTargetDir);
       pageDetails.push(detail);
     } catch {
       // Skip pages that fail to analyze — log warning in future
@@ -93,6 +96,8 @@ export async function analyzeProject(
 function analyzePage(
   entry: { filePath: string; routePath: string; sourceFile: any },
   config: ReturnType<typeof mergeConfig>,
+  project: ReturnType<typeof createProject>,
+  baseDir: string,
 ): PageDetail {
   const { sourceFile, filePath, routePath } = entry;
   const pageName = derivePageName(filePath);
@@ -113,12 +118,17 @@ function analyzePage(
   // Children (SPEC 1.4)
   const childComponents = collectChildren(sourceFile);
 
+  // Component tree (recursive resolve)
+  const componentTreeResult = collectComponentTree(sourceFile, project, { baseDir });
+  const componentTreeDepth = componentTreeResult.depth;
+  const childComponentTree = componentTreeResult.tree;
+
   // Prop flows (SPEC 1.5)
   const propFlowResult = collectPropFlows(
     sourceFile,
     props,
     pageName,
-    undefined,
+    project,
     config.maxTraceDepth,
   );
 
@@ -174,6 +184,7 @@ function analyzePage(
     effectCount: hooksResult.effectCount,
     conditionalBranchCount,
     childComponentCount: childComponents.length,
+    componentTreeDepth,
     maxDrillingDepth: propFlowResult.maxDrillingDepth,
     passThroughPropsCount: propFlowResult.passThroughPropsCount,
     derivedDataPropCount: derivedDataProps.length,
@@ -202,6 +213,7 @@ function analyzePage(
     contexts: hooksResult.contexts,
     sharedModules,
     childComponents,
+    childComponentTree,
     propFlows: propFlowResult.propFlows,
     deepestProps: propFlowResult.deepestProps,
     derivedDataProps,
@@ -218,6 +230,7 @@ function analyzePage(
     effectCount: hooksResult.effectCount,
     conditionalBranchCount,
     childComponentCount: childComponents.length,
+    componentTreeDepth,
     maxDrillingDepth: propFlowResult.maxDrillingDepth,
     passThroughPropsCount: propFlowResult.passThroughPropsCount,
     derivedDataPropCount: derivedDataProps.length,

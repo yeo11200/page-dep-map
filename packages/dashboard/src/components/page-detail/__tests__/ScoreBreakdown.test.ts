@@ -15,6 +15,7 @@ const baseMetrics: PageMetrics = {
   effectCount: 0,
   conditionalBranchCount: 0,
   childComponentCount: 0,
+  componentTreeDepth: 0,
   maxDrillingDepth: 0,
   passThroughPropsCount: 0,
   derivedDataPropCount: 0,

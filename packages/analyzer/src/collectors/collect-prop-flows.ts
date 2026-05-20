@@ -1,5 +1,6 @@
 import { type SourceFile, type Project, SyntaxKind, Node } from 'ts-morph';
 import type { PropFlow, DeepestProp, DirectProp } from '@page-dep-map/shared';
+import { resolveComponentSources } from './resolve-component-source.js';
 
 /** Prop flow 수집 결과 */
 export interface PropFlowResult {
@@ -25,7 +26,7 @@ export function collectPropFlows(
   sourceFile: SourceFile,
   props: DirectProp[],
   componentName: string,
-  _project?: Project,
+  project?: Project,
   maxTraceDepth?: number,
 ): PropFlowResult {
   const maxDepth = maxTraceDepth ?? DEFAULT_MAX_TRACE_DEPTH;
@@ -67,12 +68,17 @@ export function collectPropFlows(
 
     for (const target of jsxTargets) {
       const isPassThrough = !usedElsewhere;
-      const depth = 1; // Single-file depth for MVP
+
+      const trace = project
+        ? traceDeeper(sourceFile, target, prop.name, project, maxDepth)
+        : { depth: 1, path: [target] };
+      const depth = trace.depth;
+      const targetPath = [componentName, ...trace.path];
 
       propFlows.push({
         propName: prop.name,
         sourceComponent: componentName,
-        targetPath: [componentName, target],
+        targetPath,
         depth,
         isPassThroughOnly: isPassThrough,
         isUnusedCandidate: false,
@@ -200,6 +206,74 @@ function findParentJsxComponent(node: Node): string | null {
   }
 
   return null;
+}
+
+interface TraceResult {
+  depth: number;
+  path: string[];
+}
+
+/**
+ * 자식 컴포넌트의 정의 파일을 열어 같은 이름의 prop이 더 깊이 전달되는지 추적한다.
+ * 이름이 유지되는 경우만 따라간다 (rename 미지원).
+ */
+function traceDeeper(
+  parentSource: SourceFile,
+  childName: string,
+  propName: string,
+  project: Project,
+  maxDepth: number,
+): TraceResult {
+  const visited = new Set<string>();
+  return follow(parentSource, childName, propName, project, maxDepth, 1, visited);
+}
+
+function follow(
+  parentSource: SourceFile,
+  childName: string,
+  propName: string,
+  project: Project,
+  maxDepth: number,
+  currentDepth: number,
+  visited: Set<string>,
+): TraceResult {
+  if (currentDepth >= maxDepth) {
+    return { depth: currentDepth, path: [childName] };
+  }
+
+  const resolved = resolveComponentSources(parentSource, [childName], project);
+  if (resolved.length === 0) {
+    return { depth: currentDepth, path: [childName] };
+  }
+
+  const childSource = resolved[0]!.sourceFile;
+  const key = `${childSource.getFilePath()}::${propName}`;
+  if (visited.has(key)) {
+    return { depth: currentDepth, path: [childName] };
+  }
+  visited.add(key);
+
+  const { jsxTargets } = analyzePropUsage(childSource, propName);
+  if (jsxTargets.length === 0) {
+    return { depth: currentDepth, path: [childName] };
+  }
+
+  let best: TraceResult = { depth: currentDepth, path: [childName] };
+  for (const grandchild of jsxTargets) {
+    const deeper = follow(
+      childSource,
+      grandchild,
+      propName,
+      project,
+      maxDepth,
+      currentDepth + 1,
+      visited,
+    );
+    if (deeper.depth > best.depth) {
+      best = { depth: deeper.depth, path: [childName, ...deeper.path] };
+    }
+  }
+  return best;
 }
 
 /**

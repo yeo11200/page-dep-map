@@ -13,6 +13,7 @@ export type MetricKey =
   | 'effectCount'
   | 'conditionalBranchCount'
   | 'childComponentCount'
+  | 'componentTreeDepth'
   | 'maxDrillingDepth'
   | 'passThroughPropsCount'
   | 'derivedDataPropCount'

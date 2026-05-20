@@ -31,6 +31,7 @@ export function handleGetMetricRows(m: PageMetrics): Row[] {
       weight: 1,
     },
     { label: 'Child Components', key: 'childComponentCount', value: m.childComponentCount, weight: 1 },
+    { label: 'Component Tree Depth', key: 'componentTreeDepth', value: m.componentTreeDepth, weight: 0 },
     { label: 'Max Drilling Depth', key: 'maxDrillingDepth', value: m.maxDrillingDepth, weight: 3 },
     {
       label: 'Pass-Through Props',

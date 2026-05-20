@@ -6,6 +6,8 @@ export type {
   DirectProp,
   PropFlow,
   DeepestProp,
+  ComponentNode,
+  ComponentNodeMeta,
   PageMetrics,
   PageDetail,
   Weights,

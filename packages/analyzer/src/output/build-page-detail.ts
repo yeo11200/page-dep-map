@@ -6,6 +6,7 @@ import type {
   DeepestProp,
   LikelyIssue,
   RiskLevel,
+  ComponentNode,
 } from '@page-dep-map/shared';
 
 /** build-page-detail에 필요한 모든 분석 결과 */
@@ -20,6 +21,7 @@ export interface PageAnalysisData {
   contexts: string[];
   sharedModules: string[];
   childComponents: string[];
+  childComponentTree: ComponentNode[];
   propFlows: PropFlow[];
   deepestProps: DeepestProp[];
   derivedDataProps: string[];
@@ -37,6 +39,7 @@ export interface PageAnalysisData {
   effectCount: number;
   conditionalBranchCount: number;
   childComponentCount: number;
+  componentTreeDepth: number;
   maxDrillingDepth: number;
   passThroughPropsCount: number;
   derivedDataPropCount: number;
@@ -60,6 +63,7 @@ export function buildPageDetail(data: PageAnalysisData): PageDetail {
     effectCount: data.effectCount,
     conditionalBranchCount: data.conditionalBranchCount,
     childComponentCount: data.childComponentCount,
+    componentTreeDepth: data.componentTreeDepth,
     maxDrillingDepth: data.maxDrillingDepth,
     passThroughPropsCount: data.passThroughPropsCount,
     derivedDataPropCount: data.derivedDataPropCount,
@@ -77,6 +81,7 @@ export function buildPageDetail(data: PageAnalysisData): PageDetail {
     contexts: data.contexts,
     sharedModules: data.sharedModules,
     childComponents: data.childComponents,
+    childComponentTree: data.childComponentTree,
     propFlows: data.propFlows,
     deepestProps: data.deepestProps,
     derivedDataProps: data.derivedDataProps,

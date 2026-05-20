@@ -1,5 +1,7 @@
-import type { PageDetail, PageSummary } from '@page-dep-map/shared';
+import { useState } from 'react';
+import type { PageDetail, PageSummary, ComponentNode } from '@page-dep-map/shared';
 import type { DependencyTreeNode } from '@/types/dependency-report';
+import { ChildSubtreeModal } from './ChildSubtreeModal';
 
 interface DependenciesSectionProps {
   detail: PageDetail;
@@ -49,6 +51,19 @@ export function DependenciesSection({
   dependencyChildren = [],
   onComponentClick,
 }: DependenciesSectionProps) {
+  const [activeNode, setActiveNode] = useState<ComponentNode | null>(null);
+
+  const findTreeNode = (name: string): ComponentNode | null => {
+    const tree = detail.childComponentTree ?? [];
+    const baseName = name.includes('.') ? name.split('.')[0]! : name;
+    return tree.find((n) => n.name === name || n.name === baseName) ?? null;
+  };
+
+  const handleOpenSubtree = (name: string) => {
+    const node = findTreeNode(name);
+    if (node) setActiveNode(node);
+  };
+
   const nonChildSections = [
     { title: 'Hooks', items: detail.hooks },
     { title: 'Queries', items: detail.queries },
@@ -82,48 +97,26 @@ export function DependenciesSection({
               </h3>
               <div className="flex flex-wrap gap-2">
                 {detail.childComponents.map((child) => {
-                  const analyzed = isChildAnalyzed(child, allPages);
-                  const dependencyNode = dependencyChildren.find((node) => node.name === child);
-                  if (dependencyNode && dependencyNode.kind !== 'external') {
-                    return (
-                      <button
-                        key={child}
-                        type="button"
-                        onClick={() => onComponentClick?.(dependencyNode)}
-                        className="inline-flex items-center gap-1.5 rounded-md border bg-muted/50 px-3 py-1.5 text-sm font-mono transition-colors hover:border-foreground/20 hover:bg-muted"
-                        title={dependencyNode.filePath ?? dependencyNode.importSource}
-                      >
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        {child}
-                        <span className="text-xs text-muted-foreground">
-                          {dependencyNode.children.length}
-                        </span>
-                      </button>
-                    );
-                  }
-                  if (analyzed) {
-                    return (
-                      <button
-                        key={child}
-                        onClick={() => onChildClick?.(child)}
-                        className="inline-flex items-center gap-1.5 rounded-md border bg-muted/50 px-3 py-1.5 text-sm font-mono transition-colors hover:bg-muted hover:border-foreground/20"
-                      >
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500" />
-                        {child}
-                        <svg width="12" height="12" viewBox="0 0 12 12" className="text-muted-foreground">
-                          <path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                        </svg>
-                      </button>
-                    );
-                  }
+                  const treeNode = findTreeNode(child);
+                  const descendantCount = treeNode ? countDescendantsLocal(treeNode) : 0;
                   return (
-                    <span
+                    <button
                       key={child}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-sm font-mono text-muted-foreground"
-                      title="External or unanalyzed component"
+                      type="button"
+                      onClick={() => handleOpenSubtree(child)}
+                      className="inline-flex items-center gap-1.5 rounded-md border bg-muted/50 px-3 py-1.5 text-sm font-mono transition-colors hover:border-foreground/20 hover:bg-muted"
+                      title={treeNode?.filePath ?? 'External or unresolved component'}
                     >
+                      <span
+                        className={`inline-block h-1.5 w-1.5 rounded-full ${
+                          treeNode?.external ? 'bg-muted-foreground/40' : 'bg-emerald-500'
+                        }`}
+                      />
                       {child}
-                    </span>
+                      {descendantCount > 0 && (
+                        <span className="text-xs text-muted-foreground">+{descendantCount}</span>
+                      )}
+                    </button>
                   );
                 })}
               </div>
@@ -131,6 +124,19 @@ export function DependenciesSection({
           )}
         </div>
       )}
+      <ChildSubtreeModal
+        isOpen={activeNode !== null}
+        onClose={() => setActiveNode(null)}
+        node={activeNode}
+      />
     </section>
   );
+}
+
+function countDescendantsLocal(node: ComponentNode): number {
+  let count = 0;
+  for (const child of node.children) {
+    count += 1 + countDescendantsLocal(child);
+  }
+  return count;
 }

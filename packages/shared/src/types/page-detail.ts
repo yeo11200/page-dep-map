@@ -25,6 +25,26 @@ export interface DeepestProp {
   path: string[];
 }
 
+/** 컴포넌트 트리 노드의 가벼운 메타데이터 */
+export interface ComponentNodeMeta {
+  propsCount: number;
+  propNames: string[];
+  hookNames: string[];
+  childComponentCount: number;
+}
+
+/** 컴포넌트 트리 노드 */
+export interface ComponentNode {
+  name: string;
+  filePath: string | null;
+  depth: number;
+  external: boolean;
+  cycle: boolean;
+  truncated: boolean;
+  children: ComponentNode[];
+  meta?: ComponentNodeMeta;
+}
+
 /** 페이지의 정량적 메트릭 */
 export interface PageMetrics {
   complexityScore: number;
@@ -39,6 +59,7 @@ export interface PageMetrics {
   effectCount: number;
   conditionalBranchCount: number;
   childComponentCount: number;
+  componentTreeDepth: number;
   maxDrillingDepth: number;
   passThroughPropsCount: number;
   derivedDataPropCount: number;
@@ -60,6 +81,7 @@ export interface PageDetail {
   contexts: string[];
   sharedModules: string[];
   childComponents: string[];
+  childComponentTree: ComponentNode[];
   propFlows: PropFlow[];
   deepestProps: DeepestProp[];
   derivedDataProps: string[];

@@ -27,7 +27,7 @@ function buildKpiBar(metrics: PageMetrics): KpiStat[] {
     { label: 'Props', value: metrics.propsCount },
     { label: 'Hooks', value: metrics.hookCount },
     { label: 'Queries', value: metrics.queryCount },
-    { label: 'Depth', value: metrics.maxDrillingDepth },
+    { label: 'Depth', value: metrics.componentTreeDepth },
   ];
 }
 

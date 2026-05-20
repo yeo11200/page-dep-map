@@ -20,6 +20,7 @@ export interface PageSummary {
   effectCount: number;
   conditionalBranchCount: number;
   childComponentCount: number;
+  componentTreeDepth: number;
   maxDrillingDepth: number;
   passThroughPropsCount: number;
   derivedDataPropCount: number;

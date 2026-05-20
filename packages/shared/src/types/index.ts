@@ -5,6 +5,8 @@ export type {
   DirectProp,
   PropFlow,
   DeepestProp,
+  ComponentNode,
+  ComponentNodeMeta,
   PageMetrics,
   PageDetail,
 } from './page-detail.js';

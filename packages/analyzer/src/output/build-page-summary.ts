@@ -21,6 +21,7 @@ export function buildPageSummary(detail: PageDetail): PageSummary {
     effectCount: detail.metrics.effectCount,
     conditionalBranchCount: detail.metrics.conditionalBranchCount,
     childComponentCount: detail.metrics.childComponentCount,
+    componentTreeDepth: detail.metrics.componentTreeDepth,
     maxDrillingDepth: detail.metrics.maxDrillingDepth,
     passThroughPropsCount: detail.metrics.passThroughPropsCount,
     derivedDataPropCount: detail.metrics.derivedDataPropCount,

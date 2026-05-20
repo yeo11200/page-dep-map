@@ -15,6 +15,7 @@ const metrics: PageMetrics = {
   effectCount: 5,
   conditionalBranchCount: 4,
   childComponentCount: 7,
+  componentTreeDepth: 3,
   maxDrillingDepth: 4,
   passThroughPropsCount: 3,
   derivedDataPropCount: 2,
