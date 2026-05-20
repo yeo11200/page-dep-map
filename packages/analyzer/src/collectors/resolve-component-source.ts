@@ -1,9 +1,22 @@
 import { type SourceFile, type Project } from 'ts-morph';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 
 export interface ResolvedComponent {
   name: string;
   sourceFile: SourceFile;
 }
+
+const EXTENSION_CANDIDATES = [
+  '.tsx',
+  '.ts',
+  '.jsx',
+  '.js',
+  '/index.tsx',
+  '/index.ts',
+  '/index.jsx',
+  '/index.js',
+];
 
 export function resolveComponentSources(
   sourceFile: SourceFile,
@@ -29,11 +42,18 @@ export function resolveComponentSources(
     for (const named of decl.getNamedImports()) {
       candidates.push(named.getAliasNode()?.getText() ?? named.getName());
     }
+    const namespaceImport = decl.getNamespaceImport();
+    if (namespaceImport) candidates.push(namespaceImport.getText());
 
     const matches = candidates.filter((c) => wanted.has(c));
     if (matches.length === 0) continue;
 
-    const target = decl.getModuleSpecifierSourceFile();
+    let target = decl.getModuleSpecifierSourceFile();
+
+    if (!target && isRelative(moduleSpec)) {
+      target = resolveRelativeModule(sourceFile, moduleSpec, project);
+    }
+
     if (!target) continue;
 
     const filePath = target.getFilePath();
@@ -49,4 +69,29 @@ export function resolveComponentSources(
   }
 
   return resolved;
+}
+
+function isRelative(moduleSpec: string): boolean {
+  return moduleSpec.startsWith('./') || moduleSpec.startsWith('../');
+}
+
+function resolveRelativeModule(
+  sourceFile: SourceFile,
+  moduleSpec: string,
+  project: Project,
+): SourceFile | undefined {
+  const fromDir = path.dirname(sourceFile.getFilePath());
+  const baseTarget = path.resolve(fromDir, moduleSpec);
+
+  for (const ext of EXTENSION_CANDIDATES) {
+    const candidate = baseTarget + ext;
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      const added = project.addSourceFileAtPathIfExists(candidate);
+      if (added) return added;
+      const existing = project.getSourceFile(candidate);
+      if (existing) return existing;
+    }
+  }
+
+  return undefined;
 }
