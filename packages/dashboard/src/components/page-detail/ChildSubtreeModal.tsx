@@ -127,7 +127,7 @@ interface TreeNodeProps {
 
 function TreeNode({ node, depth, isRoot }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(false);
-  const compactPath = compactFilePath(node.filePath);
+  const displayPath = node.filePath;
   const childCount = node.children.length;
   const flag = nodeFlag(node);
   const canExpand = Boolean(node.meta);
@@ -203,12 +203,14 @@ function TreeNode({ node, depth, isRoot }: TreeNodeProps) {
               </span>
             )}
           </div>
-          {compactPath && (
+          {displayPath && (
             <div
               className="mt-0.5 truncate font-mono text-xs text-muted-foreground/80"
-              title={node.filePath ?? undefined}
+              title={displayPath}
+              dir="rtl"
+              style={{ textAlign: 'left' }}
             >
-              {compactPath}
+              <bdi>{displayPath}</bdi>
             </div>
           )}
         </div>
@@ -309,15 +311,6 @@ function nodeFlag(node: ComponentNode): { label: string; className: string } | n
     };
   }
   return null;
-}
-
-function compactFilePath(filePath: string | null): string | null {
-  if (!filePath) return null;
-  const parts = filePath.split('/').filter(Boolean);
-  if (parts.length === 0) return filePath;
-  if (parts.length === 1) return parts[0]!;
-  if (parts.length === 2) return parts.join('/');
-  return `…/${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
 }
 
 function countDescendants(node: ComponentNode): number {
