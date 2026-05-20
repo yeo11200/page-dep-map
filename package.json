@@ -1,0 +1,22 @@
+{
+  "name": "page-dep-map-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "build:shared": "cd packages/shared && pnpm build",
+    "build:analyzer": "cd packages/analyzer && pnpm build",
+    "build:dashboard": "cd packages/dashboard && pnpm build",
+    "build:cli": "cd packages/cli && pnpm build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "pnpm -r --parallel dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "tsup": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

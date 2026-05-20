@@ -1,0 +1,63 @@
+{
+  "pageName": "OrderCheckoutPage",
+  "filePath": "src/pages/order/OrderCheckoutPage.tsx",
+  "routePath": "/orders/checkout",
+  "directProps": [
+    { "name": "cartItems", "required": true, "type": "CartItem[]" },
+    { "name": "paymentMethod", "required": true, "type": "PaymentMethod" },
+    { "name": "shippingAddress", "required": true, "type": "Address" },
+    { "name": "onSubmit", "required": true, "type": "(order: Order) => Promise<void>" },
+    { "name": "onCancel", "required": true, "type": "() => void" },
+    { "name": "couponCode", "required": false, "type": "string" },
+    { "name": "promoCode", "required": false, "type": "string" },
+    { "name": "userId", "required": true, "type": "string" },
+    { "name": "storeId", "required": true, "type": "string" },
+    { "name": "locale", "required": false, "type": "string" },
+    { "name": "taxConfig", "required": true, "type": "TaxConfig" }
+  ],
+  "hooks": ["useCartQuery", "usePaymentMutation", "useShippingRates", "useTaxCalculation", "useCouponValidation", "useOrderSummary", "useFormState"],
+  "queries": ["useQuery(['cart', userId])", "useQuery(['shipping-rates', storeId])", "useQuery(['tax-config', storeId])"],
+  "stores": ["useCartStore", "usePaymentStore", "useCheckoutStore"],
+  "contexts": ["CurrencyContext", "LocaleContext"],
+  "sharedModules": ["@tanstack/react-query", "zustand", "stripe", "zod"],
+  "childComponents": ["CartSummary", "PaymentForm", "ShippingSelector", "CouponInput", "OrderTotal", "AddressForm", "SubmitButton", "StepIndicator", "TaxBreakdown", "PromoAlert"],
+  "propFlows": [
+    { "propName": "cartItems", "sourceComponent": "OrderCheckoutPage", "targetPath": ["OrderCheckoutPage", "CartSummary", "OrderTotal", "TaxBreakdown"], "depth": 3, "isPassThroughOnly": false, "isUnusedCandidate": false },
+    { "propName": "paymentMethod", "sourceComponent": "OrderCheckoutPage", "targetPath": ["OrderCheckoutPage", "PaymentForm", "SubmitButton"], "depth": 2, "isPassThroughOnly": true, "isUnusedCandidate": false },
+    { "propName": "promoCode", "sourceComponent": "OrderCheckoutPage", "targetPath": ["OrderCheckoutPage", "CouponInput", "PromoAlert"], "depth": 2, "isPassThroughOnly": true, "isUnusedCandidate": true }
+  ],
+  "deepestProps": [
+    { "name": "cartItems", "depth": 3, "path": ["OrderCheckoutPage", "CartSummary", "OrderTotal", "TaxBreakdown"] },
+    { "name": "paymentMethod", "depth": 2, "path": ["OrderCheckoutPage", "PaymentForm", "SubmitButton"] }
+  ],
+  "derivedDataProps": [
+    "subtotal (derived from cartItems)",
+    "taxAmount (derived from cartItems + taxConfig)",
+    "totalAmount (derived from subtotal + taxAmount - discount)",
+    "discount (derived from couponCode)"
+  ],
+  "likelyIssues": [
+    { "id": "MANY_CONDITIONS", "severity": "critical", "message": "8 conditional branches detected. Consider extracting conditional logic into sub-components." },
+    { "id": "DATA_ORCHESTRATOR", "severity": "warning", "message": "Page orchestrates data from 3 queries and 3 stores. Consider a dedicated data layer." },
+    { "id": "DERIVED_HEAVY", "severity": "warning", "message": "4 derived data props. Complex data transformations should be memoized or moved to selectors." },
+    { "id": "STORE_AND_PROPS", "severity": "info", "message": "Page uses both store state and props for similar data. Consider consolidating data sources." }
+  ],
+  "metrics": {
+    "complexityScore": 65,
+    "riskLevel": "critical",
+    "propsCount": 11,
+    "requiredPropsCount": 8,
+    "optionalPropsCount": 3,
+    "queryCount": 3,
+    "storeUsageCount": 3,
+    "contextUsageCount": 2,
+    "hookCount": 7,
+    "effectCount": 3,
+    "conditionalBranchCount": 8,
+    "childComponentCount": 10,
+    "maxDrillingDepth": 4,
+    "passThroughPropsCount": 4,
+    "derivedDataPropCount": 4,
+    "sharedDependencyCount": 5
+  }
+}

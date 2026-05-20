@@ -1,0 +1,17 @@
+{
+  "totalPages": 12,
+  "avgComplexityScore": 34.5,
+  "criticalPages": 2,
+  "warningPages": 3,
+  "avgPropsCount": 8.2,
+  "avgDrillingDepth": 2.8,
+  "avgHookCount": 4.1,
+  "topRiskPages": [
+    "UserDetailPage",
+    "OrderCheckoutPage",
+    "DashboardPage",
+    "ProductEditPage",
+    "SettingsPage"
+  ],
+  "updatedAt": "2026-04-16T09:30:00Z"
+}

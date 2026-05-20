@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+packages/*/dist/
+packages/cli/dashboard/
+packages/dashboard/tsconfig.tsbuildinfo
+
+# Analyzer outputs
+page-dep-map-output/
+page-dep-map-output-*/
+page-dep-map-reports/
+
+# npm pack artifacts
+*.tgz
+
+# Logs and caches
+*.log
+.turbo/
+.vite/
+coverage/
+
+# Local/editor files
+.DS_Store
+.claude/
+.idea/
+.vscode/
+
+# Local agent workspace
+_workspace/

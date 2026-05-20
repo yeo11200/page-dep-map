@@ -1,0 +1,55 @@
+{
+  "pageName": "DashboardPage",
+  "filePath": "src/pages/dashboard/DashboardPage.tsx",
+  "routePath": "/dashboard",
+  "directProps": [
+    { "name": "dateRange", "required": true, "type": "DateRange" },
+    { "name": "filters", "required": true, "type": "DashboardFilters" },
+    { "name": "onFilterChange", "required": true, "type": "(filters: DashboardFilters) => void" },
+    { "name": "refreshInterval", "required": false, "type": "number" },
+    { "name": "userId", "required": true, "type": "string" },
+    { "name": "organizationId", "required": true, "type": "string" },
+    { "name": "compact", "required": false, "type": "boolean" }
+  ],
+  "hooks": ["useMetricsQuery", "useRevenueQuery", "useActivityQuery", "useAlertQuery", "useRefreshTimer", "useDateRange"],
+  "queries": ["useQuery(['metrics', dateRange])", "useQuery(['revenue', dateRange])", "useQuery(['activity', userId])", "useQuery(['alerts', organizationId])", "useQuery(['team-stats', organizationId])"],
+  "stores": ["useUIStore"],
+  "contexts": ["ThemeContext", "LocaleContext"],
+  "sharedModules": ["@tanstack/react-query", "recharts", "date-fns"],
+  "childComponents": ["MetricsGrid", "RevenueChart", "ActivityTimeline", "AlertList", "DateRangePicker", "FilterBar", "StatCard", "TrendIndicator"],
+  "propFlows": [
+    { "propName": "dateRange", "sourceComponent": "DashboardPage", "targetPath": ["DashboardPage", "MetricsGrid", "StatCard"], "depth": 2, "isPassThroughOnly": false, "isUnusedCandidate": false },
+    { "propName": "filters", "sourceComponent": "DashboardPage", "targetPath": ["DashboardPage", "FilterBar", "RevenueChart", "ActivityTimeline"], "depth": 2, "isPassThroughOnly": true, "isUnusedCandidate": false }
+  ],
+  "deepestProps": [
+    { "name": "dateRange", "depth": 2, "path": ["DashboardPage", "MetricsGrid", "StatCard"] },
+    { "name": "filters", "depth": 2, "path": ["DashboardPage", "FilterBar", "RevenueChart"] }
+  ],
+  "derivedDataProps": [
+    "revenueGrowth (derived from revenue data)",
+    "alertCount (derived from alerts)",
+    "topMetrics (derived from metrics + dateRange)"
+  ],
+  "likelyIssues": [
+    { "id": "DERIVED_HEAVY", "severity": "warning", "message": "3 derived data props. Consider using memoized selectors." },
+    { "id": "EFFECT_NO_QUERY", "severity": "info", "message": "useEffect used for data fetching. Consider migrating to react-query." }
+  ],
+  "metrics": {
+    "complexityScore": 52,
+    "riskLevel": "warning",
+    "propsCount": 7,
+    "requiredPropsCount": 5,
+    "optionalPropsCount": 2,
+    "queryCount": 5,
+    "storeUsageCount": 1,
+    "contextUsageCount": 2,
+    "hookCount": 6,
+    "effectCount": 2,
+    "conditionalBranchCount": 4,
+    "childComponentCount": 8,
+    "maxDrillingDepth": 3,
+    "passThroughPropsCount": 2,
+    "derivedDataPropCount": 3,
+    "sharedDependencyCount": 3
+  }
+}

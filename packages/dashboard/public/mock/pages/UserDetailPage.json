@@ -1,0 +1,151 @@
+{
+  "pageName": "UserDetailPage",
+  "filePath": "src/pages/user/UserDetailPage.tsx",
+  "routePath": "/users/:userId",
+  "directProps": [
+    { "name": "userId", "required": true, "type": "string" },
+    { "name": "onUpdate", "required": true, "type": "(user: User) => void" },
+    { "name": "onDelete", "required": true, "type": "() => void" },
+    { "name": "permissions", "required": true, "type": "Permission[]" },
+    { "name": "initialTab", "required": false, "type": "'profile' | 'activity' | 'settings'" },
+    { "name": "showActions", "required": true, "type": "boolean" },
+    { "name": "organizationId", "required": true, "type": "string" },
+    { "name": "roleConfig", "required": true, "type": "RoleConfig" },
+    { "name": "auditLog", "required": true, "type": "AuditEntry[]" },
+    { "name": "theme", "required": false, "type": "'light' | 'dark'" },
+    { "name": "locale", "required": false, "type": "string" },
+    { "name": "enableNotifications", "required": true, "type": "boolean" },
+    { "name": "legacyMode", "required": false, "type": "boolean" },
+    { "name": "featureFlags", "required": false, "type": "Record<string, boolean>" }
+  ],
+  "hooks": [
+    "useUserQuery",
+    "useUserMutation",
+    "usePermissions",
+    "useAuditLog",
+    "useOrganization",
+    "useNotifications",
+    "useTabState",
+    "useFormValidation"
+  ],
+  "queries": [
+    "useQuery(['user', userId])",
+    "useQuery(['user-activity', userId])",
+    "useQuery(['organization', organizationId])",
+    "useQuery(['permissions', userId])"
+  ],
+  "stores": [
+    "useAuthStore",
+    "useUIStore"
+  ],
+  "contexts": [
+    "ThemeContext",
+    "LocaleContext",
+    "PermissionContext"
+  ],
+  "sharedModules": [
+    "@tanstack/react-query",
+    "zustand",
+    "react-hook-form",
+    "zod"
+  ],
+  "childComponents": [
+    "UserProfileCard",
+    "UserActivityFeed",
+    "UserSettingsForm",
+    "PermissionMatrix",
+    "AuditLogTable",
+    "UserAvatar",
+    "RoleBadge",
+    "ActionToolbar",
+    "TabNavigation",
+    "NotificationPreferences",
+    "DeleteConfirmDialog",
+    "UserStatsSummary"
+  ],
+  "propFlows": [
+    {
+      "propName": "userId",
+      "sourceComponent": "UserDetailPage",
+      "targetPath": ["UserDetailPage", "UserProfileCard", "UserAvatar"],
+      "depth": 2,
+      "isPassThroughOnly": false,
+      "isUnusedCandidate": false
+    },
+    {
+      "propName": "onUpdate",
+      "sourceComponent": "UserDetailPage",
+      "targetPath": ["UserDetailPage", "UserSettingsForm"],
+      "depth": 1,
+      "isPassThroughOnly": true,
+      "isUnusedCandidate": false
+    },
+    {
+      "propName": "permissions",
+      "sourceComponent": "UserDetailPage",
+      "targetPath": ["UserDetailPage", "PermissionMatrix", "RoleBadge", "ActionToolbar", "DeleteConfirmDialog"],
+      "depth": 4,
+      "isPassThroughOnly": false,
+      "isUnusedCandidate": false
+    },
+    {
+      "propName": "organizationId",
+      "sourceComponent": "UserDetailPage",
+      "targetPath": ["UserDetailPage", "UserProfileCard", "UserStatsSummary"],
+      "depth": 2,
+      "isPassThroughOnly": true,
+      "isUnusedCandidate": false
+    },
+    {
+      "propName": "legacyMode",
+      "sourceComponent": "UserDetailPage",
+      "targetPath": ["UserDetailPage", "UserProfileCard", "UserActivityFeed", "AuditLogTable", "UserStatsSummary"],
+      "depth": 4,
+      "isPassThroughOnly": true,
+      "isUnusedCandidate": true
+    },
+    {
+      "propName": "theme",
+      "sourceComponent": "UserDetailPage",
+      "targetPath": ["UserDetailPage", "UserProfileCard", "UserAvatar", "UserActivityFeed", "UserStatsSummary", "NotificationPreferences"],
+      "depth": 5,
+      "isPassThroughOnly": true,
+      "isUnusedCandidate": false
+    }
+  ],
+  "deepestProps": [
+    { "name": "theme", "depth": 5, "path": ["UserDetailPage", "UserProfileCard", "UserAvatar", "UserActivityFeed", "UserStatsSummary", "NotificationPreferences"] },
+    { "name": "permissions", "depth": 4, "path": ["UserDetailPage", "PermissionMatrix", "RoleBadge", "ActionToolbar", "DeleteConfirmDialog"] },
+    { "name": "legacyMode", "depth": 4, "path": ["UserDetailPage", "UserProfileCard", "UserActivityFeed", "AuditLogTable", "UserStatsSummary"] }
+  ],
+  "derivedDataProps": [
+    "fullName (derived from firstName + lastName)",
+    "displayRole (derived from permissions + roleConfig)",
+    "activitySummary (derived from auditLog)"
+  ],
+  "likelyIssues": [
+    { "id": "DRILL_DEEP", "severity": "critical", "message": "Prop 'theme' is drilled 5 levels deep. Consider using Context or a state management solution." },
+    { "id": "MANY_PROPS", "severity": "critical", "message": "Page receives 14 props (threshold: 10). Consider grouping related props into objects." },
+    { "id": "PASS_THROUGH", "severity": "warning", "message": "6 props are passed through without being used by intermediate components." },
+    { "id": "EFFECT_HEAVY", "severity": "warning", "message": "4 useEffect hooks detected. Consider consolidating side effects or using react-query." },
+    { "id": "MANY_REQUIRED", "severity": "info", "message": "9 of 14 props are required. Consider providing defaults or making some optional." }
+  ],
+  "metrics": {
+    "complexityScore": 72,
+    "riskLevel": "critical",
+    "propsCount": 14,
+    "requiredPropsCount": 9,
+    "optionalPropsCount": 5,
+    "queryCount": 4,
+    "storeUsageCount": 2,
+    "contextUsageCount": 3,
+    "hookCount": 8,
+    "effectCount": 4,
+    "conditionalBranchCount": 6,
+    "childComponentCount": 12,
+    "maxDrillingDepth": 5,
+    "passThroughPropsCount": 6,
+    "derivedDataPropCount": 3,
+    "sharedDependencyCount": 4
+  }
+}
