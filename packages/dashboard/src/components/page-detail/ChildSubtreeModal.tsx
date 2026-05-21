@@ -35,7 +35,6 @@ export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalPr
   if (!isOpen || !node) return null;
 
   const totalDescendants = countDescendants(node);
-  const externalCount = countByFlag(node, 'external');
   const cycleCount = countByFlag(node, 'cycle');
 
   return createPortal(
@@ -65,13 +64,6 @@ export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalPr
                   <Stat label="Props" value={node.meta.propsCount} />
                   <Stat label="Hooks" value={node.meta.hookNames.length} />
                 </>
-              )}
-              {externalCount > 0 && (
-                <Stat
-                  label="External"
-                  value={externalCount}
-                  className="text-muted-foreground"
-                />
               )}
               {cycleCount > 0 && (
                 <Stat
@@ -128,24 +120,45 @@ interface TreeNodeProps {
 
 function TreeNode({ node, depth, isRoot }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(false);
-  const displayPath = node.filePath;
-  const childCount = node.children.length;
+  const displayPath = node.filePath && !isGeneratedPath(node.filePath) ? node.filePath : null;
+  const visibleChildren = node.children;
+  const childCount = visibleChildren.length;
   const flag = nodeFlag(node);
   const canExpand = Boolean(node.meta);
+  const hasComment = Boolean(node.meta?.leadingComment);
+  const codeLink = displayPath ? node.meta?.codeLink : undefined;
 
   const toggle = () => {
     if (canExpand) setExpanded((v) => !v);
+  };
+  const openCode = () => {
+    if (codeLink) openCodeInEditor(codeLink);
   };
 
   const indentPx = depth * 20;
   const nameClass = node.external ? 'text-muted-foreground' : 'text-foreground font-medium';
 
   return (
-    <div className="group">
+    <div>
       <div
-        className="relative flex items-start gap-2 rounded-md py-1.5 pr-2 transition-colors hover:bg-muted/40"
+        className="group/node relative flex items-start gap-2 rounded-md py-1.5 pr-2 transition-colors hover:bg-muted/40"
         style={{ paddingLeft: indentPx + 8 }}
       >
+        {hasComment && (
+          <div className="pointer-events-none absolute bottom-full left-8 z-30 mb-2 hidden max-w-xl rounded-lg border border-border bg-background px-4 py-3 text-xs text-foreground shadow-2xl ring-1 ring-black/5 group-hover/node:block">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">
+              Comment
+            </div>
+            <div className="whitespace-pre-wrap font-sans leading-relaxed text-foreground">
+              {node.meta?.leadingComment}
+            </div>
+            <div
+              className="absolute left-4 top-full h-2 w-2 -translate-y-1 rotate-45 border-b border-r border-border bg-background"
+              aria-hidden
+            />
+          </div>
+        )}
+
         {/* Vertical guideline indicator */}
         {depth > 0 && (
           <div
@@ -168,7 +181,10 @@ function TreeNode({ node, depth, isRoot }: TreeNodeProps) {
         {canExpand && childCount > 0 ? (
           <button
             type="button"
-            onClick={toggle}
+            onClick={(event) => {
+              event.stopPropagation();
+              toggle();
+            }}
             className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs text-muted-foreground hover:bg-muted"
             aria-label={expanded ? 'Collapse' : 'Expand'}
           >
@@ -177,7 +193,10 @@ function TreeNode({ node, depth, isRoot }: TreeNodeProps) {
         ) : canExpand ? (
           <button
             type="button"
-            onClick={toggle}
+            onClick={(event) => {
+              event.stopPropagation();
+              toggle();
+            }}
             className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs text-muted-foreground/40 hover:bg-muted"
             aria-label={expanded ? 'Collapse' : 'Expand'}
           >
@@ -188,9 +207,27 @@ function TreeNode({ node, depth, isRoot }: TreeNodeProps) {
         )}
 
         {/* Name + meta line */}
-        <div className="min-w-0 flex-1">
+        <div
+          className={`min-w-0 flex-1 rounded-sm ${codeLink ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/60' : ''}`}
+          onClick={openCode}
+          role={codeLink ? 'button' : undefined}
+          tabIndex={codeLink ? 0 : undefined}
+          title={codeLink ? 'Open code in Cursor' : undefined}
+          onKeyDown={(event) => {
+            if (!codeLink) return;
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openCode();
+            }
+          }}
+        >
           <div className="flex flex-wrap items-baseline gap-2">
             <span className={`font-mono ${nameClass}`}>{node.name}</span>
+            {hasComment && (
+              <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium uppercase text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                comment
+              </span>
+            )}
             {childCount > 0 && (
               <span className="text-xs text-muted-foreground tabular-nums">
                 {childCount} child{childCount === 1 ? '' : 'ren'}
@@ -224,7 +261,7 @@ function TreeNode({ node, depth, isRoot }: TreeNodeProps) {
           filePath={node.filePath}
         />
       )}
-      {node.children.map((child: ComponentNode, idx: number) => (
+      {visibleChildren.map((child: ComponentNode, idx: number) => (
         <TreeNode
           key={`${child.name}-${idx}`}
           node={child}
@@ -271,12 +308,34 @@ function NodeMetaPanel({ indentPx, meta, filePath }: NodeMetaPanelProps) {
           </span>
         )}
       </MetaLine>
+      <MetaLine label="api">
+        {meta.apiNames.length === 0 ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <span className="font-mono">{meta.apiNames.join(', ')}</span>
+        )}
+      </MetaLine>
+      {meta.leadingComment && (
+        <MetaLine label="comment">
+          <span className="whitespace-pre-wrap font-sans text-muted-foreground">{meta.leadingComment}</span>
+        </MetaLine>
+      )}
       <MetaLine label="children">
         <strong className="tabular-nums">{meta.childComponentCount}</strong>
       </MetaLine>
-      {filePath && (
+      {filePath && !isGeneratedPath(filePath) && (
         <MetaLine label="file">
-          <span className="font-mono text-muted-foreground">{filePath}</span>
+          {meta.codeLink ? (
+            <button
+              type="button"
+              className="break-all text-left font-mono text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              onClick={() => openCodeInEditor(meta.codeLink!)}
+            >
+              {filePath}
+            </button>
+          ) : (
+            <span className="font-mono text-muted-foreground">{filePath}</span>
+          )}
         </MetaLine>
       )}
     </div>
@@ -328,4 +387,32 @@ function countByFlag(node: ComponentNode, flag: 'external' | 'cycle' | 'truncate
     count += countByFlag(child, flag);
   }
   return count;
+}
+
+function openCodeInEditor(vscodeLink: string) {
+  const cursorLink = vscodeLink.replace(/^vscode:\/\//, 'cursor://');
+  let fallbackTimer: number | undefined;
+
+  const cancelFallback = () => {
+    if (fallbackTimer) window.clearTimeout(fallbackTimer);
+    window.removeEventListener('blur', cancelFallback);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.hidden) cancelFallback();
+  };
+
+  window.addEventListener('blur', cancelFallback, { once: true });
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.location.href = cursorLink;
+
+  fallbackTimer = window.setTimeout(() => {
+    cancelFallback();
+    window.location.href = vscodeLink;
+  }, 900);
+}
+
+function isGeneratedPath(filePath: string): boolean {
+  return filePath.includes('/dist/') || filePath.includes('/build/') || filePath.endsWith('.d.ts');
 }

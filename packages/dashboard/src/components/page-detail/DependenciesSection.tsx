@@ -71,9 +71,12 @@ export function DependenciesSection({
     { title: 'Contexts', items: detail.contexts },
     { title: 'Shared Modules', items: detail.sharedModules },
   ];
+  const visibleChildComponents = (detail.childComponentTree ?? [])
+    .filter((node) => !node.external)
+    .map((node) => node.name);
 
   const hasNonChild = nonChildSections.some((s) => s.items.length > 0);
-  const hasChildren = detail.childComponents.length > 0;
+  const hasChildren = visibleChildComponents.length > 0;
 
   return (
     <section className="rounded-lg border bg-card p-6">
@@ -93,10 +96,10 @@ export function DependenciesSection({
           {hasChildren && (
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                Child Components ({detail.childComponents.length})
+                Child Components ({visibleChildComponents.length})
               </h3>
               <div className="flex flex-wrap gap-2">
-                {detail.childComponents.map((child) => {
+                {visibleChildComponents.map((child) => {
                   const treeNode = findTreeNode(child);
                   const descendantCount = treeNode ? countDescendantsLocal(treeNode) : 0;
                   return (

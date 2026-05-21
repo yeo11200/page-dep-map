@@ -30,6 +30,9 @@ export interface ComponentNodeMeta {
   propsCount: number;
   propNames: string[];
   hookNames: string[];
+  apiNames: string[];
+  leadingComment?: string;
+  codeLink?: string;
   childComponentCount: number;
 }
 

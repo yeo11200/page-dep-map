@@ -1,4 +1,4 @@
-import { type SourceFile, type Project } from 'ts-morph';
+import { Node, SyntaxKind, type SourceFile, type Project } from 'ts-morph';
 import type { ComponentNode, ComponentNodeMeta } from '@page-dep-map/shared';
 import { collectChildren } from './collect-children.js';
 import { collectProps } from './collect-props.js';
@@ -100,7 +100,9 @@ function buildNode(
   ancestors.add(absolutePath);
 
   const childNames = collectChildren(source);
-  const meta = buildMeta(source, childNames);
+  const resolved = resolveComponentSources(source, childNames, project);
+  const resolvedMap = new Map(resolved.map((r) => [r.name, r] as const));
+  const meta = buildMeta(source, name, childNames, baseDir);
 
   if (childNames.length === 0) {
     ancestors.delete(absolutePath);
@@ -115,9 +117,6 @@ function buildNode(
       meta,
     };
   }
-
-  const resolved = resolveComponentSources(source, childNames, project);
-  const resolvedMap = new Map(resolved.map((r) => [r.name, r] as const));
 
   const children: ComponentNode[] = [];
   let deepest = depth;
@@ -150,14 +149,24 @@ function buildNode(
   };
 }
 
-function buildMeta(source: SourceFile, childNames: string[]): ComponentNodeMeta {
+function buildMeta(
+  source: SourceFile,
+  componentName: string,
+  childNames: string[],
+  baseDir: string | undefined,
+): ComponentNodeMeta {
   try {
     const propsResult = collectProps(source);
     const hooksResult = collectHooks(source);
+    const declaration = findComponentDeclaration(source, componentName);
+    const apiNames = [...new Set([...hooksResult.queries, ...collectApiNames(source)])].sort();
     return {
       propsCount: propsResult.props.length,
       propNames: propsResult.props.map((p) => p.name),
       hookNames: hooksResult.hooks,
+      apiNames,
+      leadingComment: declaration ? getLeadingCommentText(declaration) : undefined,
+      codeLink: buildCodeLink(source, declaration, baseDir),
       childComponentCount: childNames.length,
     };
   } catch {
@@ -165,9 +174,114 @@ function buildMeta(source: SourceFile, childNames: string[]): ComponentNodeMeta 
       propsCount: 0,
       propNames: [],
       hookNames: [],
+      apiNames: [],
       childComponentCount: childNames.length,
     };
   }
+}
+
+function findComponentDeclaration(source: SourceFile, componentName: string): Node | null {
+  const baseName = componentName.includes('.') ? componentName.split('.')[0]! : componentName;
+
+  for (const fn of source.getFunctions()) {
+    if (fn.getName() === baseName) return fn;
+  }
+
+  for (const statement of source.getVariableStatements()) {
+    for (const declaration of statement.getDeclarations()) {
+      if (declaration.getName() === baseName) return declaration;
+    }
+  }
+
+  const defaultExport = source.getDefaultExportSymbol();
+  for (const declaration of defaultExport?.getDeclarations() ?? []) {
+    if (Node.isExportAssignment(declaration)) {
+      const expr = declaration.getExpression();
+      if (Node.isIdentifier(expr)) {
+        for (const symbolDeclaration of expr.getSymbol()?.getDeclarations() ?? []) {
+          if (Node.isFunctionDeclaration(symbolDeclaration) || Node.isVariableDeclaration(symbolDeclaration)) {
+            return symbolDeclaration;
+          }
+        }
+      }
+    }
+    if (Node.isFunctionDeclaration(declaration) || Node.isVariableDeclaration(declaration)) {
+      return declaration;
+    }
+  }
+
+  return null;
+}
+
+function getLeadingCommentText(node: Node): string | undefined {
+  const ranges = node.getLeadingCommentRanges();
+  const lastRange = ranges[ranges.length - 1];
+  if (!lastRange) return undefined;
+
+  const raw = lastRange.getText();
+  const cleaned = raw
+    .replace(/^\/\*\*?/, '')
+    .replace(/\*\/$/, '')
+    .split('\n')
+    .map((line) => line.replace(/^\s*\*\s?/, '').replace(/^\/\/\s?/, '').trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  return cleaned || undefined;
+}
+
+function collectApiNames(source: SourceFile): string[] {
+  const apiBindings = new Set<string>();
+
+  for (const declaration of source.getImportDeclarations()) {
+    const moduleSpecifier = declaration.getModuleSpecifierValue();
+    if (!isApiModule(moduleSpecifier)) continue;
+
+    const defaultImport = declaration.getDefaultImport();
+    if (defaultImport) apiBindings.add(defaultImport.getText());
+
+    const namespaceImport = declaration.getNamespaceImport();
+    if (namespaceImport) apiBindings.add(namespaceImport.getText());
+
+    for (const namedImport of declaration.getNamedImports()) {
+      apiBindings.add(namedImport.getAliasNode()?.getText() ?? namedImport.getName());
+    }
+  }
+
+  const names = new Set<string>();
+  for (const call of source.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+    const expression = call.getExpression();
+    if (Node.isIdentifier(expression)) {
+      const name = expression.getText();
+      if (apiBindings.has(name) || isApiLikeCall(name)) names.add(name);
+    } else if (Node.isPropertyAccessExpression(expression)) {
+      const owner = expression.getExpression().getText();
+      const name = expression.getName();
+      if (apiBindings.has(owner) || isApiLikeCall(name)) names.add(`${owner}.${name}`);
+    }
+  }
+
+  return [...names].sort();
+}
+
+function isApiModule(moduleSpecifier: string): boolean {
+  return /(^|\/)(api|apis|services|requests?|query|queries|mutation|mutations)(\/|$)|api|client/i.test(moduleSpecifier);
+}
+
+function isApiLikeCall(name: string): boolean {
+  return /^(fetch|api[A-Z]|use[A-Z].*(Query|Mutation)$|.*(Api|Query|Mutation)$)/.test(name);
+}
+
+function buildCodeLink(
+  source: SourceFile,
+  declaration: Node | null,
+  baseDir: string | undefined,
+): string {
+  const filePath = source.getFilePath();
+  const line = declaration?.getStartLineNumber() ?? 1;
+  const absolutePath = baseDir && !filePath.startsWith('/') ? `${baseDir}/${filePath}` : filePath;
+  return `vscode://file/${absolutePath}:${line}:1`;
 }
 
 function toRelativePath(absolutePath: string, baseDir: string | undefined): string {
