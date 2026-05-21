@@ -44,7 +44,8 @@ export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalPr
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[88vh] w-full max-w-5xl flex-col rounded-xl border bg-background shadow-2xl"
+        className="relative flex max-h-[88vh] w-full flex-col rounded-xl border bg-background shadow-2xl"
+        style={{ maxWidth: 'min(1600px, 95vw)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-start justify-between gap-4 border-b px-6 py-5">
