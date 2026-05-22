@@ -4,6 +4,8 @@ node_modules/
 # Build outputs
 dist/
 packages/*/dist/
+apps/*/.next/
+.next/
 packages/cli/dashboard/
 packages/cli/inspect-helper.js
 packages/dashboard/tsconfig.tsbuildinfo
