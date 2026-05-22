@@ -5,6 +5,7 @@ node_modules/
 dist/
 packages/*/dist/
 packages/cli/dashboard/
+packages/cli/inspect-helper.js
 packages/dashboard/tsconfig.tsbuildinfo
 
 # Analyzer outputs

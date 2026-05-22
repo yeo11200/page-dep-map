@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { ComponentNode } from '@page-dep-map/shared';
+import { useInspectBridge } from '@/hooks/use-inspect-bridge';
 
 interface ChildSubtreeModalProps {
   isOpen: boolean;
@@ -8,7 +9,26 @@ interface ChildSubtreeModalProps {
   node: ComponentNode | null;
 }
 
+interface InspectContextValue {
+  isHelperAlive: boolean;
+  focus: (payload: { componentName: string; filePath?: string | null; line?: number }) => void;
+  clear: () => void;
+}
+
+const InspectContext = createContext<InspectContextValue | null>(null);
+
 export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalProps) {
+  const bridge = useInspectBridge();
+  // Mirror props/hooks into refs so the cleanup effect depends ONLY on
+  // isOpen. Otherwise any new reference for `bridge` (changes on every
+  // helper ack) or `onClose` (inline arrow from parent) would re-run the
+  // effect and fire bridge.clear() right after each focus, wiping the
+  // overlay on the host page.
+  const bridgeRef = useRef(bridge);
+  bridgeRef.current = bridge;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -21,7 +41,7 @@ export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalPr
     }
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
 
@@ -29,8 +49,9 @@ export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalPr
       document.body.style.overflow = previousOverflow;
       document.body.style.paddingRight = previousPaddingRight;
       document.removeEventListener('keydown', onKey);
+      bridgeRef.current.clear();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen || !node) return null;
 
@@ -38,60 +59,86 @@ export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalPr
   const cycleCount = countByFlag(node, 'cycle');
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
+    <InspectContext.Provider value={bridge}>
       <div
-        className="relative flex max-h-[88vh] w-full flex-col rounded-xl border bg-background shadow-2xl"
-        style={{ maxWidth: 'min(1600px, 95vw)' }}
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        onClick={onClose}
       >
-        <header className="flex items-start justify-between gap-4 border-b px-6 py-5">
-          <div className="min-w-0">
-            <h2 className="truncate font-mono text-xl font-semibold">{node.name}</h2>
-            <p
-              className="mt-1 truncate font-mono text-xs text-muted-foreground"
-              title={node.filePath ?? undefined}
-            >
-              {node.filePath ?? 'External / unresolved'}
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-              <Stat label="Depth" value={node.depth} />
-              <Stat label="Descendants" value={totalDescendants} />
-              {node.meta && (
-                <>
-                  <Stat label="Props" value={node.meta.propsCount} />
-                  <Stat label="Hooks" value={node.meta.hookNames.length} />
-                </>
-              )}
-              {cycleCount > 0 && (
-                <Stat
-                  label="Cycle"
-                  value={cycleCount}
-                  className="text-amber-600 dark:text-amber-400"
-                />
-              )}
+        <div
+          className="relative flex max-h-[88vh] w-full flex-col rounded-xl border bg-background shadow-2xl"
+          style={{ maxWidth: 'min(1600px, 95vw)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <header className="flex items-start justify-between gap-4 border-b px-6 py-5">
+            <div className="min-w-0">
+              <h2 className="truncate font-mono text-xl font-semibold">{node.name}</h2>
+              <p
+                className="mt-1 truncate font-mono text-xs text-muted-foreground"
+                title={node.filePath ?? undefined}
+              >
+                {node.filePath ?? 'External / unresolved'}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                <Stat label="Depth" value={node.depth} />
+                <Stat label="Descendants" value={totalDescendants} />
+                {node.meta && (
+                  <>
+                    <Stat label="Props" value={node.meta.propsCount} />
+                    <Stat label="Hooks" value={node.meta.hookNames.length} />
+                  </>
+                )}
+                {cycleCount > 0 && (
+                  <Stat
+                    label="Cycle"
+                    value={cycleCount}
+                    className="text-amber-600 dark:text-amber-400"
+                  />
+                )}
+                <InspectStatus alive={bridge.isHelperAlive} />
+              </div>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-md border px-2.5 py-1 text-sm hover:bg-muted"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </header>
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-md border px-2.5 py-1 text-sm hover:bg-muted"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </header>
 
-        <div className="overflow-auto px-6 py-5">
-          <div className="text-sm">
-            <TreeNode node={node} depth={0} isRoot={true} />
+          <div className="overflow-auto px-6 py-5">
+            <div className="text-sm">
+              <TreeNode node={node} depth={0} isRoot={true} />
+            </div>
           </div>
         </div>
       </div>
-    </div>,
+    </InspectContext.Provider>,
     document.body,
+  );
+}
+
+function InspectStatus({ alive }: { alive: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+        alive
+          ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+          : 'border-border bg-muted text-muted-foreground'
+      }`}
+      title={
+        alive
+          ? 'Inspect helper detected — Inspect buttons will highlight components on screen'
+          : 'No inspect helper detected — install @shinjinseop/page-dep-map-vite-plugin to enable runtime highlighting'
+      }
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${alive ? 'bg-emerald-500' : 'bg-muted-foreground/50'}`}
+        aria-hidden
+      />
+      Inspect {alive ? 'connected' : 'offline'}
+    </span>
   );
 }
 
@@ -240,6 +287,7 @@ function TreeNode({ node, depth, isRoot }: TreeNodeProps) {
                 {flag.label}
               </span>
             )}
+            <InspectButton node={node} />
           </div>
           {displayPath && (
             <div
@@ -271,6 +319,52 @@ function TreeNode({ node, depth, isRoot }: TreeNodeProps) {
       ))}
     </div>
   );
+}
+
+function InspectButton({ node }: { node: ComponentNode }) {
+  const ctx = useContext(InspectContext);
+  if (!ctx || node.external) return null;
+  // Only show on parent components (those with an expand chevron). Leaf
+  // components like Card / TableRow are usually generic primitives reused
+  // across many places — inspecting them tends to be noise rather than
+  // signal.
+  if (!node.children || node.children.length === 0) return null;
+  const disabled = !ctx.isHelperAlive;
+  const handleClick = (e: ReactMouseEvent) => {
+    e.stopPropagation();
+    if (disabled) return;
+    ctx.focus({
+      componentName: node.name,
+      filePath: node.filePath,
+      line: node.meta?.codeLink ? extractLine(node.meta.codeLink) : undefined,
+    });
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={disabled}
+      className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide transition-colors ${
+        disabled
+          ? 'cursor-not-allowed border-border/60 text-muted-foreground/50'
+          : 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300 dark:hover:bg-rose-900'
+      }`}
+      title={
+        disabled
+          ? 'Helper not connected. Add @shinjinseop/page-dep-map-vite-plugin to your dev app.'
+          : 'Highlight this component on the running page'
+      }
+    >
+      Inspect
+    </button>
+  );
+}
+
+function extractLine(codeLink: string): number | undefined {
+  const match = codeLink.match(/:(\d+)(?::\d+)?$/);
+  if (!match) return undefined;
+  const n = Number(match[1]);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 interface NodeMetaPanelProps {

@@ -1,0 +1,19 @@
+{
+  "name": "@page-dep-map/inspect-helper",
+  "version": "0.1.0",
+  "description": "Browser-side helper script that talks to page-dep-map dashboard for runtime component inspection",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsup": "^8.0.0"
+  }
+}

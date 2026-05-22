@@ -1,0 +1,3 @@
+{
+  "pagePatterns": ["src/pages/**/*.tsx"]
+}

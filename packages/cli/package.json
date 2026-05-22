@@ -1,6 +1,6 @@
 {
   "name": "@shinjinseop/page-dep-map",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Frontend page dependency analyzer — CLI & dashboard for React/Next.js codebases",
   "type": "module",
   "license": "MIT",
@@ -32,12 +32,13 @@
   "files": [
     "dist",
     "dashboard",
+    "inspect-helper.js",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
-    "prebuild": "rm -rf dashboard && mkdir -p dashboard && cp -R ../dashboard/dist/. dashboard",
+    "prebuild": "rm -rf dashboard && mkdir -p dashboard && cp -R ../dashboard/dist/. dashboard && cp ../inspect-helper/dist/index.global.js inspect-helper.js",
     "dev": "tsup --watch"
   },
   "dependencies": {
