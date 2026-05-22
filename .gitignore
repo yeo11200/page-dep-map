@@ -30,3 +30,6 @@ coverage/
 
 # Local agent workspace
 _workspace/
+
+# Local screenshot capture sandbox
+_capture/

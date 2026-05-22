@@ -1,6 +1,6 @@
 {
   "name": "@shinjinseop/page-dep-map-vite-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Vite plugin that injects the page-dep-map inspect helper into the host app during dev",
   "license": "MIT",
   "author": "Jinseop Shin",

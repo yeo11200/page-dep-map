@@ -325,6 +325,126 @@ The detail page is optimized for triage:
 - Prop flow and deepest prop path sections
 - Metrics card grid with anchor IDs such as `#metric-effectCount`
 
+## Live Component Inspect
+
+> ⚡ Bridge the dashboard with your running dev app. Click a component in the
+> dashboard subtree modal and it lights up on the page in real time.
+>
+> ⚡ 대시보드와 실행 중인 dev 앱을 양방향으로 연결합니다. 대시보드의
+> 서브트리 모달에서 컴포넌트를 클릭하면 실제 화면의 해당 영역이 즉시
+> 빨간 박스로 표시됩니다.
+
+![Dashboard overview](https://raw.githubusercontent.com/yeo11200/page-dep-map/main/docs/images/dashboard-overview.png)
+
+### How it works / 동작 방식
+
+**EN.** The dashboard ships an inspect button next to every parent component
+in the subtree modal. Clicking it sends a `focus` message through the CLI
+server's SSE broker (`/api/inspect/stream` + `/api/inspect/send`). A small
+helper script — injected into your host app by
+[`@shinjinseop/page-dep-map-vite-plugin`](https://www.npmjs.com/package/@shinjinseop/page-dep-map-vite-plugin)
+during dev — walks the React fiber tree to find the component instance and
+draws a red overlay over it. Communication goes through HTTP so dashboard
+(port 3399) and host app (port 3000) can be on different origins.
+
+**KO.** 대시보드는 서브트리 모달의 각 부모 컴포넌트 옆에 inspect 버튼을
+표시합니다. 클릭하면 CLI 서버의 SSE 브로커
+(`/api/inspect/stream` + `/api/inspect/send`) 를 통해 `focus` 메시지가
+전송되고, dev 앱에 주입된 helper 스크립트가 React fiber 트리를 탐색해
+해당 컴포넌트 인스턴스 위에 빨간 오버레이를 그립니다. HTTP 기반이라
+대시보드(3399)와 앱(3000)이 서로 다른 origin이어도 통신이 됩니다.
+
+### Install both packages / 두 패키지 모두 설치
+
+```bash
+npm install -D @shinjinseop/page-dep-map @shinjinseop/page-dep-map-vite-plugin
+# or
+pnpm add -D @shinjinseop/page-dep-map @shinjinseop/page-dep-map-vite-plugin
+```
+
+The CLI alone gives you analysis + dashboard. The Vite plugin is what lets
+the dashboard reach into a running app to highlight components — install
+both if you want the live inspect feature.
+
+CLI 단독으로도 분석 + 대시보드는 동작합니다. 실행 중인 앱에서 컴포넌트
+를 실시간으로 하이라이트하려면 두 패키지를 모두 설치하세요.
+
+### Configure Vite / Vite 설정
+
+`vite.config.ts` of your host React app:
+
+```ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import pdmInspect from '@shinjinseop/page-dep-map-vite-plugin';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    pdmInspect({
+      // Dashboard URL — match the port you pass to `page-dep-map run`/`serve`.
+      // 대시보드 URL — page-dep-map run/serve 에 넘기는 포트와 일치시켜 주세요.
+      baseUrl: 'http://localhost:3399',
+    }),
+  ],
+});
+```
+
+The plugin is dev-only by default and only injects the helper when Vite
+runs in `serve` mode.
+
+플러그인은 기본적으로 dev 전용이며 Vite가 `serve` 모드일 때만 helper를
+주입합니다.
+
+### Two-terminal workflow / 두 터미널 워크플로우
+
+```bash
+# Terminal A — analysis + dashboard (port 3399)
+# 터미널 A — 분석 + 대시보드 (포트 3399)
+npx page-dep-map run .
+
+# Terminal B — your normal dev server (port 3000, or whatever)
+# 터미널 B — 평소 사용하는 dev 서버 (3000 등)
+npm run dev
+```
+
+Open both URLs in the same browser. In the dashboard, navigate to a page
+detail, open the **Child subtree** modal, and click the red **INSPECT**
+button next to any parent component.
+
+브라우저에서 두 URL을 모두 엽니다. 대시보드에서 페이지 상세로 이동해
+**Child subtree** 모달을 연 뒤, 부모 컴포넌트 옆 빨간 **INSPECT**
+버튼을 클릭하세요.
+
+![Subtree modal with Inspect](https://raw.githubusercontent.com/yeo11200/page-dep-map/main/docs/images/dashboard-inspect-modal.png)
+
+The host page instantly draws a red box around every instance of that
+component, with a tooltip showing the source file and line.
+
+호스트 페이지에 즉시 해당 컴포넌트의 모든 인스턴스가 빨간 박스로
+표시되며, 우하단 툴팁에 파일 경로와 라인 정보가 함께 나타납니다.
+
+![Host page overlay](https://raw.githubusercontent.com/yeo11200/page-dep-map/main/docs/images/host-inspect-overlay.png)
+
+### Inspect button visibility / Inspect 버튼 표시 규칙
+
+- Shown for **parent components** (rows with the `▶` expand chevron).
+  External / library components and leaf primitives (Card, Button, etc.)
+  are hidden to reduce visual noise.
+- 자식이 있는 **부모 컴포넌트**(▶ 펼치기 화살표가 있는 행)에만 표시
+  됩니다. 외부 라이브러리 컴포넌트와 leaf 프리미티브(Card, Button 등)
+  는 노이즈를 줄이기 위해 숨겨집니다.
+
+### Reverse direction: pick from the page / 역방향 — 페이지에서 컴포넌트 집기
+
+While focused on the host page, press **Alt + Shift + I** to enter pick
+mode, then click any rendered element — the helper finds the nearest user
+component in the fiber owner chain and posts it back to the dashboard.
+
+호스트 페이지에 포커스가 있는 상태에서 **Alt + Shift + I** 를 누르면
+pick 모드가 켜집니다. 화면의 아무 요소나 클릭하면 helper가 가장 가까운
+사용자 컴포넌트를 fiber owner chain에서 찾아 대시보드로 전송합니다.
+
 ## What It Analyzes
 
 For each page:

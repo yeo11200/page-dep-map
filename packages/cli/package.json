@@ -1,6 +1,6 @@
 {
   "name": "@shinjinseop/page-dep-map",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Frontend page dependency analyzer — CLI & dashboard for React/Next.js codebases",
   "type": "module",
   "license": "MIT",
