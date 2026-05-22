@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
-const SITE_URL = 'https://page-dep-map.vercel.app';
+const SITE_URL = 'https://page-dep-map-landing.vercel.app';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
