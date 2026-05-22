@@ -148,6 +148,15 @@ Screenshots in `apps/landing/public/images/` are mirrored from
   only shows the button on rows with an expand chevron (`node.children
   .length > 0`). External / library components are also hidden.
 
+## Current in-progress work
+
+- **Feature**: API usage reverse index (endpoint → components that call
+  it). Spec lives at `docs/PLAN-api-usage-index.md`.
+- **Branch**: `feature/api-usage-index`
+- **First task** when starting a session on this branch: read the PLAN,
+  then begin Phase 1 (detector core in
+  `packages/analyzer/src/visitors/api-call.ts`).
+
 ## When in doubt
 
 Read the actual code. This file describes intent and gotchas, not
