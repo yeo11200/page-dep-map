@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Github } from 'lucide-react';
 import Image from 'next/image';
+import { CLI_VERSION } from '@/lib/cli-version';
 
 export function Hero() {
   return (
@@ -19,7 +20,7 @@ export function Hero() {
         >
           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-widest text-white/70 backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-            Open source · v0.1.12
+            Open source · v{CLI_VERSION}
           </span>
 
           <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
