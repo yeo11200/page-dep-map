@@ -1,9 +1,22 @@
 # PLAN — API usage index (reverse: endpoint → components)
 
-> **Status**: draft / pre-implementation
+> **Status**: in progress — analyzer Phase 1+2 underway
 > **Branch**: `feature/api-usage-index`
 > **Owner**: jinseop.shin
-> **Prepared**: 2026-05-22 (before home-session implementation)
+> **Prepared**: 2026-05-22 / updated 2026-05-26
+
+## Goal (universal)
+
+This feature must work **across arbitrary React / Next.js codebases** —
+not just our own conventions. That means the detector ranks call sites
+by **confidence** so downstream UI can decide whether to show or hide
+each one.
+
+| Confidence | Examples | UX treatment |
+|-----------|----------|--------------|
+| `high`    | direct `fetch(url)`, `axios.get(url)`, literal URL in `useSWR`, OpenAPI-generated client | Always shown in API index |
+| `medium`  | `axios.get(\`${base}/users/${id}\`)`, `userApi.getById()` resolved 1 hop, hook with literal queryKey | Shown with a confidence dot |
+| `low`     | computed URLs, generic `api.request(method, url)`, dynamic-only path | Bucketed under "Unresolved" |
 
 ## Why this exists
 
@@ -34,11 +47,12 @@ HTTP method, the page's existing risk level).
 The analyzer needs to recognize **HTTP call sites** in TS/TSX. Patterns
 to support (priority ordered):
 
-1. **Direct `fetch` / `axios`**
+1. **Direct `fetch` / `axios` / `ky` / `ofetch`** — covers most projects
    ```ts
    fetch('/api/users/' + id)
    axios.get(`/api/users/${id}`)
-   axios.post('/api/orders', body)
+   ky.post('orders', { json: body })
+   $fetch('/api/feed')   // ofetch
    ```
 2. **react-query / @tanstack/react-query / swr hooks**
    ```ts
@@ -56,6 +70,25 @@ to support (priority ordered):
    ```
 4. **OpenAPI / Swagger generated clients** (if `openapi.json` exists,
    use it as ground truth)
+
+### baseURL composition
+
+Many projects centralize the prefix:
+
+```ts
+// lib/api.ts
+const api = axios.create({ baseURL: '/api/v1' });
+// then
+api.get('/users/' + id);   // → GET /api/v1/users/:id
+```
+
+The detector resolves `baseURL` from `axios.create()` / `ky.create()` /
+`ofetch.create()` calls within the project, then composes baseURL +
+relative path when the imported client is used elsewhere.
+
+If baseURL is a runtime expression we can't statically resolve, the
+call site is marked `medium` confidence and the resolved path is left
+prefixed with `<?>`.
 
 ### URL normalization
 

@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { to: '/', label: 'Overview' },
   { to: '/pages', label: 'Pages' },
+  { to: '/apis', label: 'APIs' },
 ];
 
 export function Sidebar() {

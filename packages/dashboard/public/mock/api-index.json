@@ -1,0 +1,66 @@
+{
+  "endpoints": [
+    {
+      "id": "GET /api/v1/users/:id",
+      "method": "GET",
+      "path": "/api/v1/users/:id",
+      "callSites": [
+        {
+          "pageName": "UserProfile",
+          "pageFilePath": "src/pages/UserProfile.tsx",
+          "componentName": "UserProfile",
+          "filePath": "src/pages/UserProfile.tsx",
+          "line": 12,
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "callShape": "fetch",
+          "confidence": "high"
+        },
+        {
+          "pageName": "AdminUserEdit",
+          "pageFilePath": "src/pages/AdminUserEdit.tsx",
+          "componentName": "UserCard",
+          "filePath": "src/components/UserCard.tsx",
+          "line": 8,
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "callShape": "axios",
+          "confidence": "high"
+        }
+      ],
+      "referenceCount": 2,
+      "pages": ["UserProfile", "AdminUserEdit"],
+      "pageRiskSummary": { "warning": 1, "healthy": 1 },
+      "topConfidence": "high"
+    },
+    {
+      "id": "GET /api/v1/orders",
+      "method": "GET",
+      "path": "/api/v1/orders",
+      "callSites": [
+        {
+          "pageName": "OrderCheckoutPage",
+          "pageFilePath": "src/pages/OrderCheckoutPage.tsx",
+          "componentName": "OrderCheckoutPage",
+          "filePath": "src/pages/OrderCheckoutPage.tsx",
+          "line": 8,
+          "method": "GET",
+          "path": "/api/v1/orders",
+          "callShape": "react-query",
+          "confidence": "high"
+        }
+      ],
+      "referenceCount": 1,
+      "pages": ["OrderCheckoutPage"],
+      "pageRiskSummary": { "critical": 1 },
+      "topConfidence": "high"
+    }
+  ],
+  "unresolved": [],
+  "stats": {
+    "totalEndpoints": 2,
+    "deadEndpoints": 0,
+    "hotEndpoints": 0,
+    "uncategorized": 0
+  }
+}

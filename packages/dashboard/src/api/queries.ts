@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import type { ProjectSummary, PageSummary, PageDetail } from '@page-dep-map/shared';
+import type { ProjectSummary, PageSummary, PageDetail, ApiIndex } from '@page-dep-map/shared';
 import type { DependencyReport } from '@/types/dependency-report';
-import { fetchSummary, fetchPages, fetchPageDetail, fetchDependencyReport } from './client';
+import {
+  fetchSummary,
+  fetchPages,
+  fetchPageDetail,
+  fetchDependencyReport,
+  fetchApiIndex,
+} from './client';
 
 export function useSummary() {
   return useQuery<ProjectSummary>({
@@ -29,6 +35,14 @@ export function useDependencyReport() {
   return useQuery<DependencyReport>({
     queryKey: ['dependency-report'],
     queryFn: fetchDependencyReport,
+    retry: false,
+  });
+}
+
+export function useApiIndex() {
+  return useQuery<ApiIndex>({
+    queryKey: ['api-index'],
+    queryFn: fetchApiIndex,
     retry: false,
   });
 }

@@ -1,4 +1,4 @@
-import type { ProjectSummary, PageSummary, PageDetail } from '@page-dep-map/shared';
+import type { ProjectSummary, PageSummary, PageDetail, ApiIndex } from '@page-dep-map/shared';
 import type { DependencyReport } from '@/types/dependency-report';
 
 const isDev = import.meta.env.DEV;
@@ -26,4 +26,8 @@ export function fetchPageDetail(slug: string): Promise<PageDetail> {
 
 export function fetchDependencyReport(): Promise<DependencyReport> {
   return fetchJSON<DependencyReport>('/dependency-report');
+}
+
+export function fetchApiIndex(): Promise<ApiIndex> {
+  return fetchJSON<ApiIndex>('/api-index');
 }

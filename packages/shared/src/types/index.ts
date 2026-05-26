@@ -26,3 +26,11 @@ export type {
   DashboardConfig,
   PageDepMapConfig,
 } from './config.js';
+export type {
+  ApiCallConfidence,
+  ApiCallShape,
+  ApiCallSite,
+  ApiEndpoint,
+  ApiIndex,
+  ApiIndexStats,
+} from './api-index.js';

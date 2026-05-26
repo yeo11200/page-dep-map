@@ -153,9 +153,19 @@ Screenshots in `apps/landing/public/images/` are mirrored from
 - **Feature**: API usage reverse index (endpoint → components that call
   it). Spec lives at `docs/PLAN-api-usage-index.md`.
 - **Branch**: `feature/api-usage-index`
-- **First task** when starting a session on this branch: read the PLAN,
-  then begin Phase 1 (detector core in
-  `packages/analyzer/src/visitors/api-call.ts`).
+- **Status (Phase 1 done)**:
+  - `collect-api-calls.ts` detects fetch / axios / ky / ofetch / useSWR
+    / react-query literal-URL calls with high confidence.
+  - `build-api-index.ts` groups call sites into endpoints with
+    confidence tiers (`high` / `medium` / `low`).
+  - `api-index.json` is written next to `project-summary.json`.
+  - CLI server exposes `GET /api/api-index`.
+  - Dashboard has `/apis` (list) and `/apis/:id` (per-endpoint detail
+    grouped by calling page).
+  - Fixture `fixtures/api-usage-fixture` covers all Phase-1 patterns.
+- **Phase 3 next (home)**: wrapped client + baseURL composition. The
+  fixture's `userApi.getById` is intentionally NOT detected yet — that's
+  the next target.
 
 ## When in doubt
 

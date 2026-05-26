@@ -23,6 +23,12 @@ export type {
   OutputConfig,
   DashboardConfig,
   PageDepMapConfig,
+  ApiCallConfidence,
+  ApiCallShape,
+  ApiCallSite,
+  ApiEndpoint,
+  ApiIndex,
+  ApiIndexStats,
 } from './types/index.js';
 
 // Constants

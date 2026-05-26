@@ -25,6 +25,20 @@ export function createApiRoutes(analysisDir: string): Router {
     }
   });
 
+  // GET /api/api-index → api-index.json (API usage reverse index)
+  router.get('/api-index', (_req, res) => {
+    const filePath = path.join(analysisDir, 'api-index.json');
+    try {
+      const data = fs.readFileSync(filePath, 'utf-8');
+      res.type('json').send(data);
+    } catch {
+      res.status(404).json({
+        error: 'API index not found',
+        hint: 'Re-run `page-dep-map analyze` after upgrading to a version that emits api-index.json',
+      });
+    }
+  });
+
   router.get('/dependency-report', (_req, res) => {
     const filePath = path.resolve(
       analysisDir,

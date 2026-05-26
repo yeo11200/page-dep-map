@@ -4,6 +4,8 @@ import type {
   ProjectSummary,
   PageDetail,
   PageSummary,
+  ApiCallSite,
+  ApiIndex,
 } from '@page-dep-map/shared';
 import { createProject } from './project.js';
 import { loadConfig } from './config/load-config.js';
@@ -19,6 +21,8 @@ import {
   collectConditionals,
 } from './collectors/index.js';
 import { collectComponentTree } from './collectors/collect-component-tree-depth.js';
+import { collectApiCalls } from './collectors/collect-api-calls.js';
+import { buildApiIndex, type PageApiAccumulator } from './output/build-api-index.js';
 import { calculateScore } from './scoring/calculate-score.js';
 import { getRiskLevel } from './scoring/risk-level.js';
 import { generateIssues } from './rules/generate-issues.js';
@@ -30,6 +34,7 @@ import { writeJson } from './output/write-json.js';
 export interface AnalyzeResult {
   summary: ProjectSummary;
   pages: PageDetail[];
+  apiIndex: ApiIndex;
 }
 
 /**
@@ -68,26 +73,39 @@ export async function analyzeProject(
 
   // 4. Analyze each page
   const pageDetails: PageDetail[] = [];
+  const apiAccumulator: PageApiAccumulator[] = [];
 
   const absoluteTargetDir = path.resolve(targetDir);
 
   for (const entry of pageEntries) {
     try {
-      const detail = analyzePage(entry, resolvedConfig, project, absoluteTargetDir);
+      const { detail, apiCallSites } = analyzePage(
+        entry,
+        resolvedConfig,
+        project,
+        absoluteTargetDir,
+      );
       pageDetails.push(detail);
+      apiAccumulator.push({
+        pageName: detail.pageName,
+        pageFilePath: detail.filePath,
+        riskLevel: detail.metrics.riskLevel,
+        callSites: apiCallSites,
+      });
     } catch {
       // Skip pages that fail to analyze — log warning in future
       continue;
     }
   }
 
-  // 5. Build project summary
+  // 5. Build project summary + API usage index
   const summary = buildSummary(pageDetails);
+  const apiIndex = buildApiIndex(apiAccumulator);
 
   // 6. Write JSON output
-  writeJson(resolvedConfig.outputDir, summary, pageDetails);
+  writeJson(resolvedConfig.outputDir, summary, pageDetails, apiIndex);
 
-  return { summary, pages: pageDetails };
+  return { summary, pages: pageDetails, apiIndex };
 }
 
 /**
@@ -98,9 +116,23 @@ function analyzePage(
   config: ReturnType<typeof mergeConfig>,
   project: ReturnType<typeof createProject>,
   baseDir: string,
-): PageDetail {
+): { detail: PageDetail; apiCallSites: ApiCallSite[] } {
   const { sourceFile, filePath, routePath } = entry;
   const pageName = derivePageName(filePath);
+
+  // --- API calls (Phase 1: page file only) ---
+  const rawApiCalls = collectApiCalls(sourceFile, filePath);
+  const apiCallSites: ApiCallSite[] = rawApiCalls.map((c) => ({
+    pageName,
+    pageFilePath: filePath,
+    componentName: c.componentName,
+    filePath,
+    line: c.line,
+    method: c.method,
+    path: c.path,
+    callShape: c.callShape,
+    confidence: c.confidence,
+  }));
 
   // --- Collect ---
 
@@ -237,7 +269,7 @@ function analyzePage(
     sharedDependencyCount: sharedModules.length,
   };
 
-  return buildPageDetail(analysisData);
+  return { detail: buildPageDetail(analysisData), apiCallSites };
 }
 
 /**
