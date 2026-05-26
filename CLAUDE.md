@@ -166,6 +166,9 @@ Screenshots in `apps/landing/public/images/` are mirrored from
 - **Phase 3 next (home)**: wrapped client + baseURL composition. The
   fixture's `userApi.getById` is intentionally NOT detected yet — that's
   the next target.
+- **Session log**: `docs/SESSION-LOG-2026-05-26.md` records exactly what
+  was finished, what ground truth the fixture verifies, and the first
+  message template for kicking off Phase 3.
 
 ## When in doubt
 
