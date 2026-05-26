@@ -325,6 +325,45 @@ The detail page is optimized for triage:
 - Prop flow and deepest prop path sections
 - Metrics card grid with anchor IDs such as `#metric-effectCount`
 
+### APIs *(new in 0.2)*
+
+A reverse index of every HTTP call site discovered in the project, keyed
+by `METHOD /path`. Answers the question *"if I change this endpoint, what
+breaks on the frontend?"*.
+
+The list view shows each endpoint with:
+
+- **Impact** badge (`critical` / `high` / `medium` / `low`) computed from
+  the consumer chain + page-risk overlay — single colored pill that
+  triages change risk at a glance.
+- **Tier** (`reached` / `orphan`) — orphans are detected in source but
+  unreached from any page, surfacing dead-code candidates.
+- **Direct** and **Consumers** counts — 1-hop wrappers vs the full
+  transitive chain.
+- Sortable headers, filter by impact / tier / HTTP method, free-text
+  path search.
+
+Clicking an endpoint opens a detail view organized by role:
+
+- **Direct callers** — the immediate wrapper (typically a
+  `useQuery` / `useMutation` hook).
+- **Intermediate hooks** — additional hook layers between the wrapper
+  and the first component.
+- **Used in component** — the React component that actually invokes the
+  hook in its body.
+- **Render path** *(collapsed by default)* — parent components that
+  include the active one in their JSX tree.
+- **Pages** — entry-point pages whose render tree includes this
+  endpoint.
+
+Detection covers `fetch`, `axios`, `ky`, `ofetch`, `useSWR`,
+`useQuery({queryFn})`, `useMutation({mutationFn: foo})`, template-literal
+URLs (`` `${PREFIX}/${id}` ``), `process.env.X` base URLs,
+`axios.create()` result variables auto-registered as wrapped clients,
+re-exports (`export { foo } from './bar'`), default exports under any
+local binding name, and object-literal wrappers
+(`export const userApi = { getById: ... }` then `userApi.getById()`).
+
 ## Live Component Inspect
 
 > ⚡ Bridge the dashboard with your running dev app. Click a component in the

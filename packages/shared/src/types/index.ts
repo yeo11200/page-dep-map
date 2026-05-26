@@ -30,7 +30,11 @@ export type {
   ApiCallConfidence,
   ApiCallShape,
   ApiCallSite,
+  ApiConsumerEntry,
   ApiEndpoint,
+  ApiEndpointImpact,
+  ApiEndpointImpactBreakdown,
+  ApiEndpointTier,
   ApiIndex,
   ApiIndexStats,
 } from './api-index.js';

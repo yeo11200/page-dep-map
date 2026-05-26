@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Activity, Gauge, MousePointerClick } from 'lucide-react';
+import { Activity, Gauge, GitBranch, MousePointerClick } from 'lucide-react';
 
 const FEATURES = [
   {
@@ -13,6 +13,11 @@ const FEATURES = [
     icon: Activity,
     title: 'Component dependency map',
     body: 'See the full subtree under each page in an interactive modal — including external vs internal components, cycles, and reuse hotspots.',
+  },
+  {
+    icon: GitBranch,
+    title: 'API change-impact analysis',
+    body: 'Reverse call-graph from every endpoint to the hooks, components, and pages that reach it. One colored badge tells you whether a backend rename is safe or needs a coordination thread.',
   },
   {
     icon: MousePointerClick,
@@ -44,7 +49,7 @@ export function Features() {
         tells you <em>why</em>. Live inspect tells you <em>where on screen</em>.
       </motion.p>
 
-      <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid gap-4 sm:grid-cols-2">
         {FEATURES.map((feat, i) => (
           <motion.div
             key={feat.title}
