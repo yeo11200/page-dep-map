@@ -1,15 +1,26 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import * as path from 'node:path';
 import { Command } from 'commander';
 import { analyzeCommand } from './commands/analyze.js';
 import { serveCommand } from './commands/serve.js';
 import { defaultCommand } from './commands/default.js';
 import { reportCommand } from './commands/report.js';
 
+// Read the CLI's own version from package.json at runtime so `--version`
+// never drifts from what was published. The dist sits at
+// `packages/cli/dist/index.js`, so package.json is one level up.
+const cliDir = path.dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(
+  readFileSync(path.join(cliDir, '..', 'package.json'), 'utf8'),
+);
+
 const program = new Command();
 
 program
   .name('page-dep-map')
   .description('Frontend page dependency analyzer — analyze complexity and serve a dashboard')
-  .version('0.1.0');
+  .version(pkg.version);
 
 // --- Sub-commands ---
 
