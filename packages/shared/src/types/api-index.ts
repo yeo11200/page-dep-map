@@ -120,6 +120,17 @@ export interface ApiConsumerEntry {
   filePath: string;
   kind: 'page' | 'component' | 'hook' | 'api' | 'unknown';
   hops: number;
+  /** True when this consumer's body actively calls SOME hook/api in the
+   *  endpoint's chain — direct or transitive. Distinguishes real
+   *  consumers from passive render-tree wrappers. */
+  invokesHook: boolean;
+  /** Stricter variant: true only when the consumer calls the endpoint's
+   *  *direct* (hop-1) hook in its own body. Lets the dashboard separate
+   *  "directly uses the endpoint hook" from "uses a downstream hook
+   *  that internally calls the endpoint hook". For the api function
+   *  and the hop-1 hook itself this is trivially false (they don't
+   *  call themselves). */
+  invokesDirectHook: boolean;
 }
 
 export interface ApiEndpoint {

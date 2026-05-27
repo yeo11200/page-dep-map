@@ -123,6 +123,8 @@ export async function analyzeProject(
   // wrap `axios`/`api` instances in a separate module.
   const {
     endpointConsumers,
+    consumerInvokesHook,
+    consumerInvokesDirectHook,
     nameToFilePath,
     pageComponentNames,
     orphanCalls,
@@ -132,6 +134,8 @@ export async function analyzeProject(
   const summary = buildSummary(pageDetails);
   const apiIndex = buildApiIndex(apiAccumulator, {
     endpointConsumers,
+    consumerInvokesHook,
+    consumerInvokesDirectHook,
     nameToFilePath,
     pageComponentNames,
     orphanCalls,
@@ -415,6 +419,14 @@ function resolveWrappedApiCalls(
   absoluteTargetDir: string,
 ): {
   endpointConsumers: Map<string, EndpointHopMap>;
+  /** Per-endpoint, per-consumer-key: does this consumer's body actually
+   *  call a hook/api in the chain (true) or does it only render other
+   *  components (false)? Used by the dashboard to split "active hook
+   *  consumers" from "render-path wrappers". */
+  consumerInvokesHook: Map<string, Map<string, boolean>>;
+  /** Per-endpoint, per-consumer: does this consumer call the endpoint's
+   *  direct (hop-1) hook in its own body? */
+  consumerInvokesDirectHook: Map<string, Map<string, boolean>>;
   nameToFilePath: Map<string, string>;
   pageComponentNames: Set<string>;
   orphanCalls: RawApiCall[];
@@ -617,12 +629,88 @@ function resolveWrappedApiCalls(
     }
   }
 
+  // For each endpoint, classify every consumer key. Two booleans:
+  //  invokesHook       — calls any hook/api in the chain
+  //  invokesDirectHook — calls the endpoint's *direct* (hop-1) hook
+  // The latter lets the dashboard split "directly uses this endpoint"
+  // from "uses a downstream hook that wraps it" without the user
+  // having to read individual hop numbers.
+  const consumerInvokesHook = new Map<string, Map<string, boolean>>();
+  const consumerInvokesDirectHook = new Map<string, Map<string, boolean>>();
+  for (const [endpointId, hopMap] of endpointConsumers) {
+    const chainKeys = new Set(hopMap.keys());
+    const directHookKeys = new Set<string>();
+    for (const [key, hops] of hopMap) {
+      if (hops === 1) directHookKeys.add(key);
+    }
+    const anyFlags = new Map<string, boolean>();
+    const directFlags = new Map<string, boolean>();
+    for (const key of chainKeys) {
+      anyFlags.set(key, computeInvokesHook(key, chainKeys, fileIndex, normalizeKey));
+      directFlags.set(
+        key,
+        computeInvokesDirectHook(key, directHookKeys, fileIndex, normalizeKey),
+      );
+    }
+    consumerInvokesHook.set(endpointId, anyFlags);
+    consumerInvokesDirectHook.set(endpointId, directFlags);
+  }
+
   return {
     endpointConsumers,
+    consumerInvokesHook,
+    consumerInvokesDirectHook,
     nameToFilePath,
     pageComponentNames,
     orphanCalls,
   };
+}
+
+function computeInvokesDirectHook(
+  key: string,
+  directHookKeys: Set<string>,
+  fileIndex: Map<string, FileExportIndex>,
+  normalizeKey: (k: string) => string,
+): boolean {
+  // The direct hop-1 hooks themselves don't "invoke" anything at hop 1
+  // (they call the hop-0 api), so they're false here. UI surfaces them
+  // separately via the "Direct callers" pinned section.
+  if (directHookKeys.has(key)) return false;
+  const { absPath, name } = parseKey(key);
+  const idx = fileIndex.get(absPath);
+  const entry = idx?.exports.get(name);
+  if (!entry) return false;
+  for (const rawCalled of entry.calledKeys) {
+    const canonical = normalizeKey(rawCalled);
+    if (directHookKeys.has(canonical)) return true;
+  }
+  return false;
+}
+
+function computeInvokesHook(
+  key: string,
+  chainKeys: Set<string>,
+  fileIndex: Map<string, FileExportIndex>,
+  normalizeKey: (k: string) => string,
+): boolean {
+  const { absPath, name } = parseKey(key);
+  // hop 0 (api) and hop 1 (the direct hook wrapper) trivially invoke
+  // something in the chain — themselves. Marking true keeps UI logic
+  // uniform without special-casing.
+  if (/^use[A-Z]/.test(name)) return true;
+  if (/^[a-z]/.test(name)) return true; // api function or helper
+  // For components and unknowns, check the body for a call to any
+  // chain hook/api.
+  const idx = fileIndex.get(absPath);
+  const entry = idx?.exports.get(name);
+  if (!entry) return false;
+  for (const rawCalled of entry.calledKeys) {
+    const canonical = normalizeKey(rawCalled);
+    if (!chainKeys.has(canonical)) continue;
+    const calledName = parseKey(canonical).name;
+    if (/^use[A-Z]/.test(calledName) || /^[a-z]/.test(calledName)) return true;
+  }
+  return false;
 }
 
 function reverseBfsWithHops(

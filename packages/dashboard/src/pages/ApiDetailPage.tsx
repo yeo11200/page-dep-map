@@ -279,16 +279,19 @@ function UsedBySection({
       .filter((c) => c.kind === 'page')
       .sort((a, b) => a.hops - b.hops);
 
-    // Component consumers — split into "active" (the smallest-hop ones,
-    // i.e. the components that actually invoke the hook in their body)
-    // and "wrappers" (parent components that just include the active
-    // ones in their JSX tree).
+    // Component consumers — split into three buckets using the
+    // analyzer's `invokesDirectHook` + `invokesHook` flags so the user
+    // can tell "directly uses the endpoint hook" from "uses a
+    // downstream hook that internally reaches the endpoint" from
+    // "just renders a child component in its JSX tree".
     const compConsumers = endpoint.consumers
       .filter((c) => c.kind === 'component')
       .sort((a, b) => a.hops - b.hops);
-    const minCompHop = compConsumers[0]?.hops;
-    const activeComponents = compConsumers.filter((c) => c.hops === minCompHop);
-    const wrappers = compConsumers.filter((c) => c.hops > minCompHop!);
+    const directHookUsers = compConsumers.filter((c) => c.invokesDirectHook);
+    const chainHookUsers = compConsumers.filter(
+      (c) => c.invokesHook && !c.invokesDirectHook,
+    );
+    const wrappers = compConsumers.filter((c) => !c.invokesHook);
 
     // Hooks at hop > 1 — additional hook wrappers between the direct
     // caller and the first component. Surface separately so they don't
@@ -297,13 +300,21 @@ function UsedBySection({
       .filter((c) => c.kind === 'hook' && c.hops > 1)
       .sort((a, b) => a.hops - b.hops);
 
-    return { direct, pages, activeComponents, wrappers, intermediateHooks };
+    return {
+      direct,
+      pages,
+      directHookUsers,
+      chainHookUsers,
+      wrappers,
+      intermediateHooks,
+    };
   }, [endpoint]);
 
   const [showWrappers, setShowWrappers] = useState(false);
 
   const transitiveCount =
-    buckets.activeComponents.length +
+    buckets.directHookUsers.length +
+    buckets.chainHookUsers.length +
     buckets.wrappers.length +
     buckets.intermediateHooks.length +
     buckets.pages.length;
@@ -344,12 +355,21 @@ function UsedBySection({
         />
       )}
 
-      {buckets.activeComponents.length > 0 && (
+      {buckets.directHookUsers.length > 0 && (
         <Group
-          label="Used in component"
-          hint="React component that actually invokes the hook in its body."
+          label="Direct hook users"
+          hint="Component calls the endpoint's direct hook in its own body."
           tone="sky"
-          entries={buckets.activeComponents}
+          entries={buckets.directHookUsers}
+        />
+      )}
+
+      {buckets.chainHookUsers.length > 0 && (
+        <Group
+          label="Chain hook users"
+          hint="Component calls a downstream hook in the chain (one level removed from the endpoint hook)."
+          tone="teal"
+          entries={buckets.chainHookUsers}
         />
       )}
 
@@ -418,6 +438,11 @@ const GROUP_TONES: Record<
     border: 'border-sky-200 dark:border-sky-900',
     bg: 'bg-sky-50/60 dark:bg-sky-950/30',
     text: 'text-sky-700 dark:text-sky-300',
+  },
+  teal: {
+    border: 'border-teal-200 dark:border-teal-900',
+    bg: 'bg-teal-50/60 dark:bg-teal-950/30',
+    text: 'text-teal-700 dark:text-teal-300',
   },
   emerald: {
     border: 'border-emerald-200 dark:border-emerald-900',

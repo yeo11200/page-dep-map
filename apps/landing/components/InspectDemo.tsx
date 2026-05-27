@@ -14,10 +14,10 @@ const SLIDES = [
   },
   {
     src: '/images/dashboard-inspect-modal.png',
-    alt: 'Child subtree modal with Inspect button',
+    alt: 'Child subtree modal showing API endpoint chips and the Inspect button',
     title: 'Drill into the subtree',
     caption:
-      'Inspect button only appears on parent components — leaf primitives stay out of the way.',
+      'Each component shows the exact endpoints it calls as method + path chips — and the Inspect button (parent components only) highlights it live on the page.',
   },
   {
     src: '/images/host-inspect-overlay.png',

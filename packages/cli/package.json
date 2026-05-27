@@ -1,11 +1,11 @@
 {
   "name": "@shinjinseop/page-dep-map",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "Frontend page dependency analyzer — CLI & dashboard for React/Next.js codebases",
   "type": "module",
   "license": "MIT",
   "author": "Jinseop Shin",
-  "homepage": "https://github.com/yeo11200/page-dep-map#readme",
+  "homepage": "https://page-dep-map-landing.vercel.app/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yeo11200/page-dep-map.git"

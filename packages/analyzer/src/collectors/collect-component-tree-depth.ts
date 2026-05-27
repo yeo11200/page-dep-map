@@ -258,6 +258,11 @@ function collectApiNames(source: SourceFile): string[] {
     } else if (Node.isPropertyAccessExpression(expression)) {
       const owner = expression.getExpression().getText();
       const name = expression.getName();
+      // Skip react-query key factories (`priceKeys.foo`, `companiesKey.bar`).
+      // They're imported from query/ modules so they slip into apiBindings,
+      // but they build queryKey arrays — not API calls — and never resolve
+      // to an endpoint. Keep genuine object-wrapper clients (`userApi.getById`).
+      if (isQueryKeyFactory(owner)) continue;
       if (apiBindings.has(owner) || isApiLikeCall(name)) names.add(`${owner}.${name}`);
     }
   }
@@ -271,6 +276,11 @@ function isApiModule(moduleSpecifier: string): boolean {
 
 function isApiLikeCall(name: string): boolean {
   return /^(fetch|api[A-Z]|use[A-Z].*(Query|Mutation)$|.*(Api|Query|Mutation)$)/.test(name);
+}
+
+/** react-query key factories: `priceKeys`, `companiesKey`, `adminKeys`… */
+function isQueryKeyFactory(owner: string): boolean {
+  return /Keys?$/.test(owner);
 }
 
 function buildCodeLink(

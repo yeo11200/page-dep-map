@@ -1,7 +1,26 @@
-import { createContext, useContext, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import type { ComponentNode } from '@page-dep-map/shared';
+import { Link } from 'react-router-dom';
+import type { ApiEndpoint, ComponentNode } from '@page-dep-map/shared';
 import { useInspectBridge } from '@/hooks/use-inspect-bridge';
+import { useApiIndex } from '@/api/queries';
+
+const METHOD_BADGE: Record<string, string> = {
+  GET: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+  POST: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
+  PUT: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  PATCH: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  DELETE: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+};
+
+/**
+ * Maps a query-hook name (as recorded in a component's `meta.apiNames`)
+ * to the endpoint(s) that hook reaches. Built once per modal from the
+ * api-index by reverse-indexing each endpoint's hook consumers. Lets a
+ * component node show the concrete `METHOD /path` it calls rather than
+ * just the wrapper hook name.
+ */
+const ApiLookupContext = createContext<Map<string, ApiEndpoint[]>>(new Map());
 
 interface ChildSubtreeModalProps {
   isOpen: boolean;
@@ -60,6 +79,7 @@ export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalPr
 
   return createPortal(
     <InspectContext.Provider value={bridge}>
+      <ApiLookupProvider>
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
         onClick={onClose}
@@ -85,6 +105,7 @@ export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalPr
                   <>
                     <Stat label="Props" value={node.meta.propsCount} />
                     <Stat label="Hooks" value={node.meta.hookNames.length} />
+                    <ApiCountStat hookNames={node.meta.apiNames} />
                   </>
                 )}
                 {cycleCount > 0 && (
@@ -114,8 +135,36 @@ export function ChildSubtreeModal({ isOpen, onClose, node }: ChildSubtreeModalPr
           </div>
         </div>
       </div>
+      </ApiLookupProvider>
     </InspectContext.Provider>,
     document.body,
+  );
+}
+
+/**
+ * Fetches the api-index and reverse-indexes hook → endpoints once, then
+ * exposes it through context so deep tree nodes can resolve their
+ * `meta.apiNames` to concrete endpoints without prop drilling.
+ */
+function ApiLookupProvider({ children }: { children: React.ReactNode }) {
+  const { data } = useApiIndex();
+  const hookToEndpoints = useMemo(() => {
+    const m = new Map<string, ApiEndpoint[]>();
+    if (!data) return m;
+    for (const ep of data.endpoints) {
+      for (const c of ep.consumers) {
+        if (c.kind !== 'hook') continue;
+        const arr = m.get(c.name);
+        if (arr) arr.push(ep);
+        else m.set(c.name, [ep]);
+      }
+    }
+    return m;
+  }, [data]);
+  return (
+    <ApiLookupContext.Provider value={hookToEndpoints}>
+      {children}
+    </ApiLookupContext.Provider>
   );
 }
 
@@ -140,6 +189,18 @@ function InspectStatus({ alive }: { alive: boolean }) {
       Inspect {alive ? 'connected' : 'offline'}
     </span>
   );
+}
+
+function ApiCountStat({ hookNames }: { hookNames: string[] }) {
+  const lookup = useContext(ApiLookupContext);
+  const count = useMemo(() => {
+    const ids = new Set<string>();
+    for (const hook of hookNames) {
+      for (const ep of lookup.get(hook) ?? []) ids.add(ep.id);
+    }
+    return ids.size;
+  }, [hookNames, lookup]);
+  return <Stat label="APIs" value={count} />;
 }
 
 function Stat({
@@ -403,11 +464,7 @@ function NodeMetaPanel({ indentPx, meta, filePath }: NodeMetaPanelProps) {
         )}
       </MetaLine>
       <MetaLine label="api">
-        {meta.apiNames.length === 0 ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <span className="font-mono">{meta.apiNames.join(', ')}</span>
-        )}
+        <ApiEndpointsForHooks hookNames={meta.apiNames} />
       </MetaLine>
       {meta.leadingComment && (
         <MetaLine label="comment">
@@ -433,6 +490,71 @@ function NodeMetaPanel({ indentPx, meta, filePath }: NodeMetaPanelProps) {
         </MetaLine>
       )}
     </div>
+  );
+}
+
+/**
+ * Resolve a component's directly-called query hooks to the concrete
+ * endpoints they hit, and render them as clickable method+path chips.
+ * Falls back to the raw hook names when the api-index has no match
+ * (e.g. a hook that wraps a non-literal / unresolved URL).
+ */
+function ApiEndpointsForHooks({ hookNames }: { hookNames: string[] }) {
+  const lookup = useContext(ApiLookupContext);
+  if (hookNames.length === 0) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  // Dedup endpoints across all hooks this component calls.
+  const endpoints = new Map<string, ApiEndpoint>();
+  const unresolved: string[] = [];
+  for (const hook of hookNames) {
+    const eps = lookup.get(hook);
+    if (eps && eps.length > 0) {
+      for (const ep of eps) endpoints.set(ep.id, ep);
+    } else {
+      unresolved.push(hook);
+    }
+  }
+
+  if (endpoints.size === 0) {
+    // No endpoint resolved — show the hook names so we don't hide info.
+    return <span className="font-mono text-muted-foreground">{hookNames.join(', ')}</span>;
+  }
+
+  const sorted = [...endpoints.values()].sort((a, b) =>
+    a.path.localeCompare(b.path),
+  );
+
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {sorted.map((ep) => {
+        const cls = METHOD_BADGE[ep.method] ?? 'bg-muted text-muted-foreground';
+        return (
+          <Link
+            key={ep.id}
+            to={`/apis/${encodeURIComponent(ep.id)}`}
+            className="inline-flex items-center gap-1.5 rounded-md border bg-background px-1.5 py-0.5 hover:border-foreground/30 hover:bg-muted/50"
+            title={`${ep.method} ${ep.path}`}
+          >
+            <span
+              className={`rounded px-1 py-px font-mono text-[9px] font-semibold uppercase ${cls}`}
+            >
+              {ep.method}
+            </span>
+            <span className="font-mono text-[11px]">{ep.path}</span>
+          </Link>
+        );
+      })}
+      {unresolved.length > 0 && (
+        <span
+          className="font-mono text-[11px] text-muted-foreground"
+          title="Hook calls a URL the analyzer couldn't statically resolve"
+        >
+          {unresolved.join(', ')}
+        </span>
+      )}
+    </span>
   );
 }
 

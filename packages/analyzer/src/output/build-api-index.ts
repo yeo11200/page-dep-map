@@ -47,6 +47,13 @@ export function buildApiIndex(
      *  component names with min-hops distance, computed by Phase 3 via
      *  the reverse call graph. */
     endpointConsumers?: Map<string, Map<string, number>>;
+    /** Per-endpoint, per-consumer-key: does the consumer's body actually
+     *  invoke a hook/api in the chain. Lets the dashboard separate
+     *  active hook callers from passive render-tree parents. */
+    consumerInvokesHook?: Map<string, Map<string, boolean>>;
+    /** Per-endpoint, per-consumer-key: does the consumer call the
+     *  endpoint's direct (hop-1) hook in its own body? */
+    consumerInvokesDirectHook?: Map<string, Map<string, boolean>>;
     /** Lookup: function/component name → project-relative file path. */
     nameToFilePath?: Map<string, string>;
     /** Names that are recognized as page-component default exports.
@@ -61,6 +68,8 @@ export function buildApiIndex(
 ): ApiIndex {
   const hotThreshold = options.hotThreshold ?? 5;
   const consumerMap = options.endpointConsumers ?? new Map<string, Map<string, number>>();
+  const invokesHookMap = options.consumerInvokesHook ?? new Map<string, Map<string, boolean>>();
+  const invokesDirectHookMap = options.consumerInvokesDirectHook ?? new Map<string, Map<string, boolean>>();
   const nameToFilePath = options.nameToFilePath ?? new Map<string, string>();
   const pageComponentNames = options.pageComponentNames ?? new Set<string>();
   const orphanCalls = options.orphanCalls ?? [];
@@ -195,6 +204,8 @@ export function buildApiIndex(
     // (`${absPath}:::${name}`) so we decode them back into name +
     // file path for the dashboard.
     const hopMap = consumerMap.get(ep.id);
+    const invokesHookForEp = invokesHookMap.get(ep.id);
+    const invokesDirectHookForEp = invokesDirectHookMap.get(ep.id);
     if (hopMap && hopMap.size > 0) {
       const entries: ApiConsumerEntry[] = [];
       // Dedup synonymous default-export aliases (the same function may
@@ -211,11 +222,18 @@ export function buildApiIndex(
         const dedupKey = `${absPath}|${display}`;
         const existing = seen.get(dedupKey);
         if (existing && existing.hops <= hops) continue;
+        const kind = classifyConsumer(display, hops, key, pageComponentNames);
         const entry: ApiConsumerEntry = {
           name: display,
           filePath,
-          kind: classifyConsumer(display, hops, key, pageComponentNames),
+          kind,
           hops,
+          // Pages are entry points: they include children but don't
+          // call hooks directly in the sense that matters here.
+          invokesHook:
+            kind === 'page' ? false : invokesHookForEp?.get(key) ?? false,
+          invokesDirectHook:
+            kind === 'page' ? false : invokesDirectHookForEp?.get(key) ?? false,
         };
         seen.set(dedupKey, entry);
       }
